@@ -1,0 +1,298 @@
+{
+  "reviewDate": "September 12, 2026",
+  "version": "1.4",
+  "repositoryUrl": "https://github.com/inouye-lab/oralscale",
+  "sources": {
+    "requirements": "models/02-requirements-and-invariants.md",
+    "flow": "models/03-state-machine.md",
+    "privacy": "models/04-architecture-and-zones.md",
+    "integrity": "models/06-threat-model.md",
+    "grading": "docs/reference/GRADER-BACKENDS.md",
+    "setup": "docs/guides/QUICKSTART.md",
+    "questions": "docs/guides/QUESTION-DESIGN-GUIDE.md",
+    "student": "docs/guides/STUDENT-GUIDE.md",
+    "ui": "web/index.html",
+    "interaction": "web/js/app.js",
+    "external": "docs/public/external-sources.json",
+    "readme": "README.md",
+    "bankSpec": "docs/reference/bank-generation-spec.md"
+  },
+  "student": {
+    "audience": "Student guide",
+    "headline": "Your ideas. Out loud.",
+    "intro": "Take a short oral quiz in your browser, then submit your recording to Gradescope. Explain what you understand in your own words.",
+    "needs": "Your assignment link and personal quiz key • A phone or computer with a microphone • A quiet spot and a steady connection",
+    "quickstartSources": [
+      "requirements",
+      "flow",
+      "student",
+      "ui",
+      "interaction",
+      "external"
+    ],
+    "steps": [
+      {
+        "title": "Open the right quiz",
+        "body": "Use the link your instructor posted. Check the course and quiz name at the top. Enter your own quiz key, shared privately with you (e.g., a text grade item on Brightspace), and select **Continue**."
+      },
+      {
+        "title": "Allow the microphone",
+        "body": "Before starting, select any approved extra-time accommodation. Select **Allow mic & start**, then allow microphone access. Keep this tab open and your screen awake. Recording starts before the question appears."
+      },
+      {
+        "title": "Say the digits. Explain your answer.",
+        "body": "Read the displayed code aloud, **one digit at a time**. When the question appears, its timer starts. Speak naturally; you can pause to think or correct yourself. Answer the question without saying your name or ID."
+      },
+      {
+        "title": "Finish every question and every code",
+        "body": "Select **I'm done with this question** when ready. Read each new code aloud and continue to the next question. After the final question, read the last code and select **Finish & submit**. You cannot go back to an earlier answer."
+      },
+      {
+        "title": "Download, then upload to Gradescope",
+        "body": "On **Review & submit**, download the **.zip**. Open the matching Gradescope assignment in your browser and upload that file. Check that Gradescope received it. **The download alone does not submit your work.**"
+      }
+    ],
+    "screens": [
+      {
+        "file": "say-code.png",
+        "alt": "OralScale recording card showing code 4 7 1 9 and instructions to read each digit aloud.",
+        "caption": "Say every code aloud."
+      },
+      {
+        "file": "answer.png",
+        "alt": "OralScale question card with a countdown, an example question about plant growth, and the I'm done with this question button.",
+        "caption": "Explain, then move on."
+      },
+      {
+        "file": "download.png",
+        "alt": "OralScale Review and submit card with a download button and instructions to upload the zip to Gradescope.",
+        "caption": "Download, then upload."
+      }
+    ],
+    "reminderTitle": "Before you leave",
+    "reminder": "Make sure your .zip is in Gradescope. Your newest upload is active by default. To use an earlier attempt, open Submission History and activate that submission.",
+    "faqIntro": "Start here if you are unsure. Your instructor sets the timing, deadline, and grading policy for your course.",
+    "faqs": [
+      {
+        "id": "retakes",
+        "question": "Can I try again? Which attempt counts?",
+        "answer": "Yes. Retake with newly drawn questions and submit before your deadline. Gradescope grades the active submission, usually your newest upload; choose an earlier one in Submission History if you prefer it. Abandoning a question may trigger a short wait before restarting.",
+        "sources": [
+          "requirements",
+          "student",
+          "external"
+        ]
+      },
+      {
+        "id": "extra-time",
+        "question": "How do I use an approved extra-time accommodation?",
+        "answer": "Before recording, open the extended-time option and manually select your approved extension. Your instructor can verify this selection against your approved accommodations. If the page does not offer the time you need, contact your instructor before starting.",
+        "sources": [
+          "requirements",
+          "ui",
+          "interaction"
+        ]
+      },
+      {
+        "id": "time",
+        "question": "How long do I have? Must I use all the time?",
+        "answer": "Your instructor sets the time and number of questions. You may finish early. Code-reading time comes before the answer timer. Finish within the countdown; any grace period is just for finishing your sentence.",
+        "sources": [
+          "requirements",
+          "flow",
+          "interaction"
+        ]
+      },
+      {
+        "id": "lost-key",
+        "question": "Where is my quiz key?",
+        "answer": "Look where your instructor shared it privately, such as a text grade item on Brightspace. You can also retrieve it from Gradescope feedback by submitting without a recording. You still need to record and upload your quiz afterward. Keep your key private.",
+        "sources": [
+          "student",
+          "ui"
+        ]
+      },
+      {
+        "id": "technical-help",
+        "question": "My microphone, connection, or upload failed. What now?",
+        "answer": "Allow microphone access, check your connection, and reopen the current quiz link. Upload through the Gradescope website, not its mobile app. Save any error code or offered backup. An UNCERTIFIED BACKUP receives 0 automatically; try a fresh attempt or ask staff to review it.",
+        "sources": [
+          "requirements",
+          "flow",
+          "ui",
+          "external"
+        ]
+      },
+      {
+        "id": "codes",
+        "question": "Why do I have to say the codes?",
+        "answer": "Codes help confirm you answered live. Read every set before, between, and after your answers, one digit at a time. A missing code can cause a 0. If you said it but the feedback says otherwise, ask staff to review your recording.",
+        "sources": [
+          "requirements",
+          "integrity",
+          "student"
+        ]
+      },
+      {
+        "id": "privacy",
+        "question": "Does the quiz server receive my identity or recording?",
+        "answer": "No audio, name, or email is sent to the quiz server. Your quiz key identifies the attempt, alongside recording fingerprints and timing information. You upload audio only to Gradescope, where your instructor can listen. Identity validation happens inside the Gradescope autograder.",
+        "sources": [
+          "privacy",
+          "requirements"
+        ]
+      },
+      {
+        "id": "ai-grading",
+        "question": "How is AI used to assess my answer?",
+        "answer": "Your transcript is assessed by a local AI model inside Gradescope or sent to a more advanced AI model for potentially more accurate analysis. External assessment receives no student identifier, and detected personal details are removed from the text. Grades are then assigned locally in Gradescope. Avoid saying personal details.",
+        "sources": [
+          "privacy",
+          "requirements",
+          "grading"
+        ]
+      }
+    ],
+    "help": "Need help or a grade review? Contact course staff with the assignment name and feedback or error code. Keep your quiz key private."
+  },
+  "faculty": {
+    "audience": "Faculty guide",
+    "headline": "Your first quiz, with AI.",
+    "intro": "Copy the prompt below into your AI agent. It will guide you through five steps: launch your own demo, try it in Gradescope, then create your first real quiz.",
+    "needs": "An AI coding agent (Codex, Claude Code, or Google Antigravity) • A free Cloudflare account • Gradescope access with Programming Assignments. No coding experience or prewritten questions needed.",
+    "quickstartSources": [
+      "readme",
+      "setup",
+      "questions",
+      "bankSpec",
+      "requirements",
+      "external"
+    ],
+    "steps": [
+      {
+        "title": "Open OralScale in your AI agent",
+        "body": "Paste the prompt above and answer the agent’s questions about your course name and term. Let it check or install the required tools; you do not need to know the commands."
+      },
+      {
+        "title": "Launch your own demo course and website",
+        "body": "Let the agent create your private course with its built-in **demo-quiz**, then deploy the quiz website to your Cloudflare account. Complete the account sign-in when prompted. The agent prepares your quiz link and grading package."
+      },
+      {
+        "title": "Connect your Gradescope course",
+        "body": "Create a **Programming Assignment** for demo-quiz and upload its matching autograder .zip. Use the container size the agent reports and a **40-minute timeout**. The agent can walk you through the account steps."
+      },
+      {
+        "title": "Try it all the way through",
+        "body": "Use the demo link and your own quiz key. Record, download, and **upload to Gradescope**. Check the resulting grade and feedback. If anything fails, tell the agent what happened and ask it to diagnose and retest."
+      },
+      {
+        "title": "Generate your bank and launch Quiz 1",
+        "body": "Give AI your slides, transcripts or notes. Have it interview you about learning goals and exclusions, then generate a large bank from those sources. Review samples aloud. Ask the agent to validate, deploy, package and test your first real quiz."
+      }
+    ],
+    "screens": [],
+    "reminderTitle": "Then make it yours",
+    "reminder": "Use the question-design guide to define what students should demonstrate. Let AI draft the bank; you approve its alignment, accuracy and suitability for spoken answers.",
+    "faqIntro": "You bring the teaching goals. Your AI agent helps you build, test, and improve the course.",
+    "faqs": [
+      {
+        "id": "setup",
+        "question": "Do I need coding experience? Can I use a chat assistant?",
+        "answer": "No coding experience is required. An agent with file and command access can perform setup. A text-only chat assistant can explain steps and draft questions, but needs execution tools to set up your course.",
+        "sources": [
+          "readme",
+          "setup",
+          "external"
+        ]
+      },
+      {
+        "id": "questions",
+        "question": "What should my question-design specification say?",
+        "answer": "Have AI interview you about recall, concept application, theoretical reasoning, transfer across domains, or translating word problems into concrete models. Specify audience, difficulty, answer time and evidence of understanding. Exclude unsuitable tasks, such as untaught topics, lengthy calculations, trick questions or required writing.",
+        "sources": [
+          "questions",
+          "bankSpec"
+        ]
+      },
+      {
+        "id": "bank",
+        "question": "How do I generate a large, course-aligned bank?",
+        "answer": "Give AI your materials and design specification. Request roughly 100 varied, source-grounded questions with reference answers and grading criteria. Have the agent validate them. Review samples across topics and difficulty, try several aloud, then approve and freeze the bank.",
+        "sources": [
+          "questions",
+          "bankSpec",
+          "readme"
+        ]
+      },
+      {
+        "id": "cost",
+        "question": "Do I need a website, paid hosting, or an AI grading account?",
+        "answer": "A free Cloudflare account provides hosting; no existing website or custom domain is needed. You need Gradescope Programming Assignment access. Default grading needs no external AI key. Your setup agent may require a paid plan.",
+        "sources": [
+          "setup",
+          "readme",
+          "grading",
+          "external"
+        ]
+      },
+      {
+        "id": "debug",
+        "question": "What if setup breaks, or I want a change?",
+        "answer": "Describe what you expected, what happened and the error shown. Ask the agent to diagnose, fix and retest without bypassing safeguards. Describe changes in ordinary language; you handle sign-ins and approve consequential changes.",
+        "sources": [
+          "setup",
+          "readme",
+          "requirements"
+        ]
+      },
+      {
+        "id": "privacy",
+        "question": "Where does student work go?",
+        "answer": "Audio goes only to Gradescope. The quiz server receives the key, recording fingerprints and timings, not names, emails or audio. Identity checks and grade assignment run in Gradescope. Assessment uses a local AI model or an institution-approved external model receiving de-identified, redacted text. Keep course banks and credentials private.",
+        "sources": [
+          "privacy",
+          "requirements",
+          "grading"
+        ]
+      },
+      {
+        "id": "extra-time",
+        "question": "How do approved extra-time accommodations work?",
+        "answer": "Students select approved extra time. Check claims manually, or download Gradescope submissions and run the working local audit script yourself against a local list of approvals. The list stays off Gradescope and out of the autograder. The script flags unsupported claims only when excess time was used; review flags before acting. Grades are not changed automatically. Keep audit files out of AI tools. After review, delete local approval lists, downloads and audit outputs, following institutional retention rules.",
+        "sources": [
+          "requirements",
+          "ui",
+          "interaction",
+          "external"
+        ]
+      },
+      {
+        "id": "release",
+        "question": "What should I check before students use a real quiz?",
+        "answer": "Test the deployed quiz through to a Gradescope grade with its matching autograder. Start with ungraded practice, share keys privately and provide the Student guide. Explain deadlines and which submission counts. Review flagged work and sample ordinary results.",
+        "sources": [
+          "setup",
+          "requirements",
+          "student",
+          "external"
+        ]
+      }
+    ],
+    "help": "Handle student records with care. You are responsible for FERPA compliance and your institution’s privacy, access and retention requirements when using OralScale. Ask your institution’s privacy office when unsure.",
+    "workflow": [
+      {
+        "title": "Your private course",
+        "body": "Demo + teaching materials"
+      },
+      {
+        "title": "Your quiz website",
+        "body": "Hosted on Cloudflare"
+      },
+      {
+        "title": "Your Gradescope course",
+        "body": "Submission + grading"
+      }
+    ],
+    "starterPrompt": "Set up https://github.com/inouye-lab/oralscale for my course. I have no coding experience. Ask my course name and term. Read AGENTS.md and the README Quickstart; follow the existing tools to create my private course and deploy its demo-quiz on my Cloudflare account. Guide my sign-ins and Gradescope setup. Give me the quiz link, my quiz key, matching autograder zip and exact settings. Help me test through to a Gradescope grade and fix issues. Keep secrets and question banks private. Then interview me about learning goals and exclusions before generating questions from my teaching materials."
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OralScale frozen question bank",
+  "type": "object",
+  "required": [
+    "version",
+    "bankId",
+    "questions"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "bankId": {
+      "type": "string",
+      "description": "Stable identifier; part of the token-signing material."
+    },
+    "title": {
+      "type": "string"
+    },
+    "course": {
+      "type": "string"
+    },
+    "createdWith": {
+      "type": "string",
+      "description": "Provenance note, e.g. 'Claude Opus, frozen 2026-08-13'."
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "prompt",
+          "keyPoints"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique within the bank."
+          },
+          "topic": {
+            "type": "string"
+          },
+          "principle": {
+            "type": "string",
+            "description": "The durable principle the question tests (redesign philosophy: principles over methods)."
+          },
+          "difficulty": {
+            "type": "string",
+            "enum": [
+              "intro",
+              "core",
+              "stretch"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "explain",
+              "why",
+              "compare",
+              "spot-the-flaw",
+              "formalize",
+              "when-would-you"
+            ],
+            "description": "Question archetype."
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Shown to the student. Answerable aloud in 2-3 minutes (5 max)."
+          },
+          "rubric": {
+            "type": "string",
+            "description": "Guidance for the GenAI grader."
+          },
+          "keyPoints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Concrete points a full-credit spoken answer should hit. These do most of the grading work, so phrase them as things a student would SAY, not as chapter headings."
+          },
+          "referenceAnswer": {
+            "type": "string",
+            "description": "OPTIONAL. A model full-credit spoken answer, 60-100 words, in the register a student would actually use. Shown to the grader as an example of what earns 1.0, explicitly not as wording to match. Measurably the largest single improvement to a SMALL grading model, which has less background knowledge to fall back on; it also makes a large model more consistent."
+          },
+          "scoringBands": {
+            "type": "object",
+            "description": "OPTIONAL. What each score band looks like for THIS question, so the grader anchors to your standard rather than its own. The keys are the band names of the ladder your course uses. The engine's default ladder is full / strong / partial / weak / none, worth 1.0 / 0.9 / 0.8 / 0.7 / 0.0, and those five are described below. A course may re-price them with `defaults.bandScores`, or replace the ladder entirely - different names, more rungs or fewer - with `defaults.bands` in its course.json; write these keys to match whichever ladder is in force. Any subset may be given: a band you omit is one the grader judges unaided, and a band the ladder does not contain is ignored.",
+            "properties": {
+              "full": {
+                "type": "string",
+                "description": "What a full-credit answer contains (default 1.0)."
+              },
+              "strong": {
+                "type": "string",
+                "description": "The whole reasoning minus one substantive piece - the commonest good spoken answer (default 0.9)."
+              },
+              "partial": {
+                "type": "string",
+                "description": "The main idea without the mechanism (default 0.8)."
+              },
+              "weak": {
+                "type": "string",
+                "description": "On topic and nothing false, but the reasoning the question asks for is absent (default 0.7)."
+              },
+              "none": {
+                "type": "string",
+                "description": "Wrong about the central idea or no answer, including the specific wrong answer you expect (default 0.0)."
+              }
+            },
+            "additionalProperties": {
+              "type": "string",
+              "description": "A band from a custom ladder (courses may define their own names)."
+            }
+          },
+          "commonErrors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "OPTIONAL, and the cheapest of the three to write because you already know them - they are the misconceptions you correct every year. Listing them stops a grader awarding credit for the confident wrong answer."
+          }
+        },
+        "description": "Required: id, prompt, keyPoints. The three optional fields at the end (referenceAnswer, scoringBands, commonErrors) are what let a small, self-contained grader approach a large one; see docs/guides/QUESTION-DESIGN-GUIDE.md and tools/eval/."
+      }
+    }
+  }
+}

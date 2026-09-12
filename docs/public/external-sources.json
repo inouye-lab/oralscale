@@ -1,0 +1,41 @@
+{
+  "reviewedOn": "2026-09-11",
+  "reviewBeforeDays": 180,
+  "sources": [
+    {
+      "title": "Gradescope: Creating a Programming Assignment",
+      "url": "https://guides.gradescope.com/hc/en-us/articles/22254107840909-Creating-a-Programming-Assignment",
+      "claims": "Programming Assignments require an institutional license; create from the course Assignments page; mobile-app upload is unsupported."
+    },
+    {
+      "title": "Gradescope: Multiple submissions",
+      "url": "https://guides.gradescope.com/hc/en-us/articles/21589761635341-What-happens-if-a-student-has-more-than-one-submission-for-a-given-assignment",
+      "claims": "Most recent student upload is active by default; previous submissions remain in history; submission dates apply."
+    },
+    {
+      "title": "Codex app",
+      "url": "https://developers.openai.com/codex/app/",
+      "claims": "Coding agent works with projects and executes tasks."
+    },
+    {
+      "title": "Claude Code desktop",
+      "url": "https://code.claude.com/docs/en/desktop-quickstart",
+      "claims": "Local project and terminal access."
+    },
+    {
+      "title": "Google Antigravity",
+      "url": "https://antigravity.google/docs/ide/overview/",
+      "claims": "Agentic development environment."
+    },
+    {
+      "title": "Cloudflare Workers pricing",
+      "url": "https://developers.cloudflare.com/workers/platform/pricing/",
+      "claims": "Free plan is available; usage limits apply."
+    },
+    {
+      "title": "U.S. Department of Education: FERPA",
+      "url": "https://studentprivacy.ed.gov/ferpa",
+      "claims": "Institutional obligations govern access to and disclosure of education records. Follow institutional privacy and retention requirements; the guide is not a compliance guarantee."
+    }
+  ]
+}

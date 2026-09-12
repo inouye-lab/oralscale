@@ -1,0 +1,83 @@
+{
+  "courseId": "demo",
+  "title": "OralScale Demo Course",
+  "webappUrl": "https://oralscale-demo.pages.dev/",
+  "pseudonymSalt": "31cbfccef1c3f1517b529f5e0f81ecf8",
+  "pseudonymSaltNote": "PUBLIC salt for the in-browser email hash. Not a secret (it rides in the course link), but it MUST match between the web link and the autograder, and must differ per course.",
+  "accessKeyEpoch": 1,
+  "accessKeyEpochNote": "Bump to re-mint EVERY quiz key in this course (invalidating the ones students hold). Only needed if gen-access-keys.js reports an id collision on a large roster.",
+  "gradingPolicy": {
+    "late": {
+      "mode": "none",
+      "modeNote": "The demo grades everything, whenever it arrives. See courses/_template/course.json for the full set of options and the per-student-extension caveat."
+    }
+  },
+  "note": "The PUBLIC demo, and deliberately ONE assignment. With a single assignment the autograder can never mis-route a submission whatever the Gradescope assignment is called (INV-DEPLOY-3), which is the whole experience an instructor evaluating OralScale should have: it works, first time, without reading anything. The fixtures the test suite drives live in courses/_testsuite/ precisely so they cannot appear here.",
+  "assignments": {
+    "demo-quiz": {
+      "shortTitle": "Demo Quiz",
+      "shortTitleNote": "REQUIRED on every assignment (INV-USE-1). The short, TOPIC-FREE label the app shows above the quiz and the only assignment text stamped into a student's link. It is display only \u2014 nothing routes, grades or selects questions on it. Keep it to the quiz number: the assignment's `title` and its id both name the week's subject, and printing either one puts a hint above the quiz and inside the link. It also has to stay true if the quiz is re-scoped or becomes a review. Matching the Gradescope assignment name is useful but not required. gen-url.js and check-course-safety.js both refuse without it.",
+      "week": "try",
+      "title": "Demo quiz — try OralScale",
+      "note": "The PUBLIC trial assignment behind oralscale-demo.pages.dev. Open (no quiz key), because asking a stranger evaluating the tool to mint themselves a credential first is where they stop. Real courses must leave requireAccessKey true — the link is public, so without a key anyone can mine the bank (INV-SEC-8). Nothing here is assessed and the bank is twelve generic questions, so there is nothing to protect.",
+      "bank": "banks/general-stem.json",
+      "limitSec": 120,
+      "bufferSec": 20,
+      "questionsPerAttempt": 3,
+      "difficultyMix": [
+        "intro",
+        "core",
+        "stretch"
+      ],
+      "requireAccessKey": true,
+      "retakeCooldownSec": 0,
+      "linkTtlMin": 30,
+      "requireAccessKeyNote": "TRUE, like every real course. The demo hands out ONE SHARED key that anyone may use, rather than running open. Two reasons. First, an instructor evaluating this should see the flow their students will actually see, and \"type your key\" is that flow — a demo that skips the gate demonstrates something the product does not do. Second, open mode is a real weakening (INV-SEC-8): the link is public, so without a key anyone can mine the bank. Keeping it off everywhere means the dangerous setting is never modelled as normal.",
+      "retakeCooldownSecNote": "No cooldown: many instructors may be trying this at the same moment, and they all share one key, so they share one identity. A cooldown would have them blocking each other.",
+      "demoSkipIdentityCheck": true,
+      "demoSkipIdentityCheckNote": "DEMO ONLY (INV-DEMO-1). The autograder does NOT check that the certificate was issued to the student submitting it. Here so an instructor evaluating OralScale can record on the PUBLIC demo site -- which hands out ONE SHARED quiz key, minted for a dummy address -- and upload the result to their OWN Gradescope course without first minting a key for their own email. Without this the certificate names the demo key's holder, Gradescope names the evaluator, the two never match, and an honest evaluation scores 0. NEVER SET THIS IN A REAL COURSE: identity binding at submission time is the whole of INV-SEC-2, and without it one recording can be uploaded by any number of students and every one of them is graded on it. tools/check-course-safety.js refuses the commit if any course outside courses/demo/ sets it, and every submission graded under it carries a student-visible DEMO MODE warning and an instructor review flag."
+    }
+  },
+  "defaults": {
+    "retakeCooldownSec": 300,
+    "cooldownClearsAfterSec": 2,
+    "codeLeadSec": null,
+    "codeLeadSecNote": "ADVANCED. Seconds a boundary code is shown before the question appears. null = DERIVED as 1 second per code digit (6 digits -> 6 s), which is how long reading them aloud actually takes. Set a number only to override.",
+    "tailLimitSec": null,
+    "tailLimitSecNote": "ADVANCED. Seconds allowed between the FINAL code appearing and Finish. null = DERIVED as 2 seconds per code digit (6 digits -> 12 s) - double, because nothing follows the last code to absorb a fumble. Set a number only to override.",
+    "questionsPerAttempt": 1,
+    "requireAccessKey": false,
+    "requireAccessKeyNote": "The DEMO course runs OPEN so the local walkthrough needs no key handout. Real courses must leave this true (the code default): without it anyone can invent a studentRef and mine the bank (INV-SEC-8).",
+    "bufferSec": 20,
+    "codeDigits": 4,
+    "codeDigitsNote": "Digits a student reads aloud at each boundary. Range 4-8; DEFAULT 4, reduced from 6 because every digit is one more thing a nervous person has to read correctly. The floor of 4 is not arbitrary: the matcher tolerates one transcription slip, which at 3 digits means any TWO of the three digits in order are accepted, and a code the student never said then matches innocent numbers in their answer about a quarter of the time. The time allowed to read a code is DERIVED from this (1 s per digit, doubled at the final code), so lowering it shortens the attempt too.",
+    "maxPoints": 10,
+    "maxPointsNote": "Gradescope points for the assignment. Overrides the ORALSCALE_MAX_POINTS env var.",
+    "scoreAggregation": "mean",
+    "scoreAggregationNote": "How several questions combine: 'mean', 'min' (the weakest answer decides - for competencies that must each be demonstrated), or 'dropLowest' (scores the best N-1 of N; the dropped question's feedback is still shown, marked as not counting).",
+    "bands": null,
+    "bandsNote": "THE WHOLE GRADING LADDER, if you want your own. An ordered object from band name to either a number (its share of the question) or {\"score\": 0.8, \"meaning\": \"what this band looks like\"}. Order is the ladder, highest first, and the scores must not climb as you go down it. Two rungs minimum; names are letters, digits, _ and - only. null uses the engine's five: full 1.0, strong 0.9, partial 0.8, weak 0.7, none 0.0. USE bandScores INSTEAD if you only want to re-price those five - it keeps the grader prompt wording that was actually measured, which a custom ladder cannot (yours is generated from your own `meaning` strings). If you define your own ladder, write your banks' `scoringBands` with the same names: a description for a band the grader cannot choose is dropped. An unusable ladder is rejected WHOLE and the default is used.",
+    "scoring": null,
+    "scoringNote": "HOW A MARK IS COMPUTED (INV-GRADE-10). null or \"bands\": the grader picks one of the bands above. \"points\": the grader instead judges EVERY required and optional point as stated / partly / absent / contradicted, quoting the student, and lists any false claim the student left uncorrected; the code then does the arithmetic. Required points are worth 2 and optional points 1; partly earns half, and an uncorrected contradiction costs the point's weight. With base = 2 x the required points: below base is weak, base is partial, base+1 is strong, base+2 is full. An answer that conveys no required point is weak at most, and an uncorrected false claim caps it at partial. A slip the student corrects during the answer is never penalised. Tune with {\"mode\":\"points\",\"requiredWeight\":2,\"optionalWeight\":1,\"strongAt\":1,\"fullAt\":2,\"falseClaimCap\":\"partial\"}. The band is priced by the ladder above, which must keep the five standard names. Never switch a released assignment (INV-DEPLOY-6).",
+    "bandScores": null,
+    "bandScoresNote": "What each grading band is WORTH, as a fraction of the question. null uses the engine default: full 1.0, strong 0.9, partial 0.8, weak 0.7, none 0.0 - an even tenth per rung, with the single cliff between `weak` (on topic, nothing false) and `none` (wrong about the central idea, or no answer). Set all five, in that order, to price the scale for your course - a table that is incomplete, non-numeric, outside 0-1, or that ranks a lower band above a higher one is rejected whole and the default is used, because a half-applied curve would take part of a student's mark from each scale. You choose what a band is worth; you cannot invent or delete a band, since the five names are baked into both graders' prompts and parsers.",
+    "showQuestionMeta": false,
+    "showQuestionMetaNote": "Whether the small line above each question naming its TOPIC, its PRINCIPLE and its difficulty is served to the browser. FALSE, which is the code default and what every new assignment gets. It is off because `principle` states the durable idea the question is testing, printed directly above the question — on a question like 'why does a coin that has landed heads five times still have a fifty-fifty chance?' it would read 'past outcomes do not change an independent process', which is the answer. When this is false the fields are not merely hidden by the app: tools/build-worker.js leaves them out of the deployed bundle and the Signer never sends them, so there is nothing in the tab to read (INV-COURSE-5). Set it true PER ASSIGNMENT only to keep a quiz that is already live looking exactly as it did when students started it.",
+    "showTranscript": true,
+    "showTranscriptNote": "Whether the student sees the automatic transcript of their own recording.",
+    "allowPrivateCode": true,
+    "allowPrivateCodeNote": "Offer the 'private code' email opt-out. Only relevant when requireAccessKey is false - key mode already sends no email.",
+    "difficultyMixNote": "Optional per-slot difficulty, e.g. [\"intro\",\"core\",\"stretch\"] for a warm-up/core/stretch trio. Null or absent draws every question from the whole bank; a difficulty absent from the bank falls back to the whole bank rather than failing the attempt.",
+    "gradingBackend": "local",
+    "gradingBackendNote": "Which grader scores the answers. 'local' (the default) runs a small open-weights model INSIDE the Gradescope container, so the transcript never leaves it. 'genai' sends the de-identified, PII-redacted transcript to Purdue GenAI Studio, which grades better - but GenAI Studio carries no FERPA certification, so choosing it is the instructor's decision, not ours. 'heuristic' is keyword coverage only: deterministic, needs nothing, and grades markedly worse - choose it deliberately or not at all. THERE ARE NO FALLBACKS (INV-GRADE-1): the grader you name here is the one used, and if it cannot run, the affected submissions are NOT graded and are flagged for you to regrade. Two students who said the same thing must not be measured by different methods because one of them submitted during an outage.",
+    "gradingQualityNote": "GRADING QUALITY. The local grader is qwen2.5-3b and there is no model choice: eleven alternatives from 1.5B to 9B were measured against it (Qwen2.5/3/3.5, Gemma 3/4, Phi-4-mini, Llama 3.2, Ministral) and none won — bigger models grade WORSE here because they are generous, which shows up as ties. It needs 2.07 GB peak in the container, 66% headroom, and its memory does NOT grow with questionsPerAttempt. IF YOU WANT BETTER GRADING, the choice is the BACKEND, not the model: Purdue GenAI (qwen3.6:27b) marks NOTICEABLY BETTER than the local model on every metric measured. The cost is locality — the de-identified, PII-redacted transcript leaves the Gradescope container to a service with no FERPA certification, which is why 'local' is the default. Set gradingBackend='genai' to accept that trade. See docs/reference/GRADER-BACKENDS.md.",
+    "scoreBonus": 0,
+    "scoreBonusNote": "POINTS added to every submission. Normally 0. Set it PER ASSIGNMENT (not here) when something went wrong on your side - a bad question, a grader changed mid-term, an outage - and the fair remedy is to give the whole cohort a mark back rather than re-grade by hand. Uniform by design: a remedy that lands differently on different students re-creates the unfairness it is meant to repair. Capped at maxPoints unless scoreBonusAllowOverMax is true. Students are TOLD an adjustment was applied.",
+    "scoreBonusReason": "",
+    "scoreBonusReasonNote": "Why the bonus was given. Shown to students and recorded in the instructor output. A bonus with no recorded reason is indefensible six weeks later.",
+    "scoreBonusAllowOverMax": false,
+    "supportChannel": "Piazza",
+    "supportChannelNote": "Where a student is told to ask for help when something fails on OUR side — named in the message they see if a submission could not be graded. Use whatever your course actually reads."
+  },
+  "signerUrl": "https://oralscale-demo-signer.dinouye.workers.dev"
+}

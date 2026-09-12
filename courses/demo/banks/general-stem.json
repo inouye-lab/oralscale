@@ -1,0 +1,346 @@
+{
+  "version": 1,
+  "bankId": "starter-general-stem",
+  "title": "Starter bank — general STEM reasoning",
+  "course": "Any STEM course (setup walkthrough only)",
+  "createdWith": "Hand-authored for docs/reference/SETUP-GUIDE.md. NOT for real assessment — replace with your own bank.",
+  "note": "Twelve questions any STEM discipline can answer, so you can hear the whole flow before you write a single question of your own. Every item carries the optional referenceAnswer / scoringBands / commonErrors fields, so this file doubles as a worked example of the full schema. A real bank has ~100 questions per week; see docs/guides/QUESTION-DESIGN-GUIDE.md.",
+  "questions": [
+    {
+      "id": "s-001",
+      "topic": "Averages",
+      "principle": "An average is a balance point, not a typical value.",
+      "difficulty": "intro",
+      "kind": "explain",
+      "prompt": "In plain words, what does the mean of a set of numbers tell you, and give one situation where it is a misleading summary.",
+      "rubric": "Credit for describing the mean as the balancing point or total-shared-equally, and for a concrete case where skew or an outlier makes it unrepresentative.",
+      "keyPoints": [
+        "The mean is the total divided by how many values there are",
+        "It is the balance point of the values",
+        "A single extreme value shifts it a long way",
+        "With skewed data most values can sit below the mean",
+        "Income or house prices are the standard example"
+      ],
+      "referenceAnswer": "The mean is the total shared out equally — the point the values balance around. It is misleading when the distribution is skewed or has an outlier, because every value pulls on it in proportion to how far away it is. In a room where nine people earn thirty thousand and one earns ten million, the mean income is about a million, and nobody in the room earns anything like that. The median is the honest summary there.",
+      "scoringBands": {
+        "full": "Defines the mean as total-over-count or as a balance point AND gives a concrete case where skew or an outlier makes it unrepresentative.",
+        "strong": "Defines the mean correctly and gives a case where it misleads, but does not say what about that case (skew, an outlier) breaks it.",
+        "partial": "Correct definition with a vague or unexplained example.",
+        "weak": "Only the arithmetic definition, no account of when it misleads.",
+        "none": "Confuses the mean with the median or the mode."
+      },
+      "commonErrors": [
+        "Describing the mean as 'the most common value' (that is the mode)",
+        "Saying it is 'the middle value' (that is the median)"
+      ]
+    },
+    {
+      "id": "s-002",
+      "topic": "Rates of change",
+      "principle": "A derivative is an instantaneous rate, obtained as a limit of average rates.",
+      "difficulty": "core",
+      "kind": "explain",
+      "prompt": "Explain what the derivative of a function at a point actually measures, and how it relates to the average rate of change.",
+      "rubric": "Credit for the average rate over an interval, shrinking that interval, and the limit being the instantaneous rate or slope of the tangent.",
+      "keyPoints": [
+        "The average rate of change is the change in output over the change in input",
+        "The derivative shrinks that interval toward zero",
+        "It is the limit of those average rates",
+        "Geometrically it is the slope of the tangent line",
+        "It tells you how fast the output responds to a small nudge in the input"
+      ],
+      "referenceAnswer": "The average rate of change is just rise over run across an interval. The derivative takes that same ratio and shrinks the interval toward zero, and the limit is the instantaneous rate — how fast the output is changing right at that point. Geometrically the secant line through two points becomes the tangent line at one, and the derivative is its slope. Practically it tells you how much the output moves for a very small nudge in the input.",
+      "scoringBands": {
+        "full": "Gives the average rate, the shrinking interval, the limit, and the tangent-slope interpretation.",
+        "strong": "Connects the derivative to a limit of average rates OR to the tangent slope, with the other reading left implicit.",
+        "partial": "Says 'slope of the tangent' or 'rate of change' correctly but does not connect it to a limit of average rates.",
+        "weak": "Only names it as a slope or quotes a rule for differentiating.",
+        "none": "Describes the integral, or an average rate with no limit."
+      },
+      "commonErrors": [
+        "Confusing the derivative with the value of the function",
+        "Describing it as the average rate over an interval with no limiting process"
+      ]
+    },
+    {
+      "id": "s-003",
+      "topic": "Units",
+      "principle": "Physical equations must balance dimensionally, which is a free correctness check.",
+      "difficulty": "intro",
+      "kind": "why",
+      "prompt": "Why can checking the units of an equation catch a mistake, even when you have no idea what the right answer is?",
+      "rubric": "Credit for dimensional consistency: both sides must have the same units, so a mismatch proves an error without needing the correct result.",
+      "keyPoints": [
+        "Both sides of a valid equation must have the same units",
+        "Only quantities with the same units can be added",
+        "A mismatch proves something is wrong, independently of the value",
+        "It catches dropped or duplicated factors",
+        "It is a necessary check, not a sufficient one - correct units can still be a wrong answer"
+      ],
+      "referenceAnswer": "Any equation that describes something physical has to balance in units, because you cannot add metres to seconds and you cannot equate them either. So if you work through an algebra problem and end up with a velocity on one side and an acceleration on the other, you know you made a mistake without knowing what the right answer is. It catches dropped factors especially well. It is a necessary check, not a sufficient one — you can have the right units and still the wrong number.",
+      "scoringBands": {
+        "full": "States that units must match on both sides, that a mismatch proves an error without the correct answer, and notes it is necessary but not sufficient.",
+        "strong": "Explains that units must match and that a mismatch proves an error without knowing the answer, but does not note the check is necessary rather than sufficient.",
+        "partial": "Says units must match and a mismatch shows an error, but does not note it is not sufficient.",
+        "weak": "Says units are important without explaining what the check proves.",
+        "none": "Claims correct units mean the answer is correct."
+      },
+      "commonErrors": [
+        "Claiming a dimensional check confirms an answer is right",
+        "Confusing units with significant figures or precision"
+      ]
+    },
+    {
+      "id": "s-004",
+      "topic": "Probability",
+      "principle": "Independence means one event carries no information about another.",
+      "difficulty": "core",
+      "kind": "explain",
+      "prompt": "What does it mean for two events to be independent, and why does a coin that has landed heads five times in a row still have a fifty-fifty chance on the next flip?",
+      "rubric": "Credit for independence as one event not changing the probability of the other, and for identifying the gambler's fallacy - the coin has no memory.",
+      "keyPoints": [
+        "Independent means the probability of one is unchanged by knowing the other",
+        "Formally the joint probability is the product of the individual probabilities",
+        "A fair coin has no memory of previous flips",
+        "Past results do not change the physical process",
+        "Expecting a correction is the gambler's fallacy"
+      ],
+      "referenceAnswer": "Two events are independent if knowing one happened tells you nothing about the probability of the other — formally the probability of both is the product of the two probabilities. A coin flip is independent of the flips before it because the coin has no memory: nothing about the physical process changes because of what happened earlier. So five heads in a row does not make tails 'due'. Expecting the sequence to correct itself is the gambler's fallacy.",
+      "scoringBands": {
+        "full": "Defines independence as one event not changing the other's probability, and explains the coin has no memory so past flips do not shift the next.",
+        "strong": "Defines independence correctly and says the coin has no memory, without connecting the two — that independence is exactly why the past flips do not shift the next.",
+        "partial": "Gets the coin-has-no-memory point but does not define independence precisely.",
+        "weak": "Asserts it is still fifty-fifty with no reason.",
+        "none": "Says tails becomes more likely, or confuses independence with mutual exclusivity."
+      },
+      "commonErrors": [
+        "Believing a run of heads makes tails more likely",
+        "Confusing independent with mutually exclusive"
+      ]
+    },
+    {
+      "id": "s-005",
+      "topic": "Correlation",
+      "principle": "Correlation constrains, but does not establish, a causal explanation.",
+      "difficulty": "core",
+      "kind": "why",
+      "prompt": "Why does a strong correlation between two things not establish that one causes the other? Give a concrete example.",
+      "rubric": "Credit for naming at least one alternative explanation - a common cause, reverse causation, or coincidence - and grounding it in a specific example.",
+      "keyPoints": [
+        "Correlation only says the two move together",
+        "A third variable can drive both (common cause)",
+        "The causal direction may be the reverse",
+        "With enough comparisons, some correlations are coincidence",
+        "Establishing causation needs intervention or a design that rules the alternatives out"
+      ],
+      "referenceAnswer": "A correlation says two things move together, and that is all it says. There are at least three other explanations. A third variable can drive both — ice cream sales and drowning deaths both rise with summer heat. The direction can be backwards — maybe the outcome causes the supposed cause. And if you test enough pairs, some will correlate by chance. To get to causation you need an intervention, or a design that rules those alternatives out.",
+      "scoringBands": {
+        "full": "Names at least two alternative explanations (common cause, reverse causation, coincidence) and grounds one in a concrete example.",
+        "strong": "Names two alternative explanations but grounds neither in a concrete example, or gives a strong example illustrating only one.",
+        "partial": "Names one alternative with a plausible example.",
+        "weak": "Repeats 'correlation is not causation' with no mechanism.",
+        "none": "Argues that a strong enough correlation does establish causation."
+      },
+      "commonErrors": [
+        "Treating a large correlation coefficient as evidence of causation",
+        "Offering the slogan with no alternative explanation"
+      ]
+    },
+    {
+      "id": "s-006",
+      "topic": "Exponential growth",
+      "principle": "Exponential growth is proportional to the current amount, so it outpaces any fixed increment.",
+      "difficulty": "core",
+      "kind": "explain",
+      "prompt": "What makes growth exponential rather than linear, and why does exponential growth eventually overtake any linear process no matter how small it starts?",
+      "rubric": "Credit for the growth rate being proportional to the current quantity (constant multiplier per step) versus a constant increment, and for the consequence that the gap widens without bound.",
+      "keyPoints": [
+        "Linear growth adds a fixed amount each step",
+        "Exponential growth multiplies by a fixed factor each step",
+        "So the increase itself grows with the quantity",
+        "Doubling time is constant, which is the signature",
+        "Any constant multiplier above one eventually beats any constant increment"
+      ],
+      "referenceAnswer": "Linear growth adds the same amount every step. Exponential growth multiplies by the same factor every step, so the amount added is itself proportional to how much you already have. That is why the doubling time is constant. And it is why exponential eventually wins from any starting point: the linear process adds a fixed amount forever while the exponential one's increments keep growing, so however far behind it starts, the gap closes and then reverses.",
+      "scoringBands": {
+        "full": "Contrasts constant increment with constant multiplier, notes the increment grows with the quantity, and explains why that guarantees eventual overtaking.",
+        "strong": "Contrasts constant increment with constant multiplier and notes the increment grows with the quantity, but does not close the argument for why overtaking is guaranteed.",
+        "partial": "Gets the multiply-versus-add distinction but does not explain the overtaking.",
+        "weak": "Says exponential is 'faster' with no mechanism.",
+        "none": "Describes exponential growth as adding a large fixed amount."
+      },
+      "commonErrors": [
+        "Describing exponential growth as 'very fast linear growth'",
+        "Confusing exponential growth with a steep straight line"
+      ]
+    },
+    {
+      "id": "s-007",
+      "topic": "Estimation",
+      "principle": "An order-of-magnitude estimate trades precision for a fast check on plausibility.",
+      "difficulty": "core",
+      "kind": "when-would-you",
+      "prompt": "When is a rough order-of-magnitude estimate more useful than an exact calculation? Ground your answer in a realistic situation.",
+      "rubric": "Credit for the purpose - checking plausibility, sizing a problem, or deciding whether to proceed - and for a specific situation where exactness would cost more than it is worth.",
+      "keyPoints": [
+        "An estimate answers whether something is even feasible",
+        "It is fast and needs little data",
+        "Errors in the inputs partly cancel across a product",
+        "It catches results that are wrong by a factor of a thousand",
+        "Use it before committing effort to an exact calculation"
+      ],
+      "referenceAnswer": "An order-of-magnitude estimate is for deciding whether something is worth doing at all. If you want to know whether a data centre could be cooled by outside air, you do not need three significant figures — you need to know whether the answer is off by a factor of two or a factor of a thousand. It is fast, it needs almost no data, and errors in the inputs tend to partly cancel. You do the exact calculation afterwards, on the option the estimate did not rule out.",
+      "scoringBands": {
+        "full": "Names the purpose (plausibility, sizing, go/no-go) AND gives a concrete situation where exactness is not worth the cost.",
+        "strong": "Names the purpose and gives a concrete situation, without saying why exactness is not worth its cost there.",
+        "partial": "Names the purpose with a generic example.",
+        "weak": "Says estimates are 'quicker' with no account of what they are for.",
+        "none": "Argues an estimate is a substitute for an exact answer when precision matters."
+      },
+      "commonErrors": [
+        "Treating an estimate as a replacement for a precise result",
+        "Claiming estimates are only for when you lack the data"
+      ]
+    },
+    {
+      "id": "s-008",
+      "topic": "Logarithms",
+      "principle": "A logarithm turns multiplicative structure into additive structure.",
+      "difficulty": "core",
+      "kind": "why",
+      "prompt": "Why are logarithmic scales useful for data that spans many orders of magnitude?",
+      "rubric": "Credit for compressing a multiplicative range into an additive one, so equal distances mean equal ratios and small values remain visible.",
+      "keyPoints": [
+        "A log scale maps ratios to equal distances",
+        "It compresses a huge range into a readable one",
+        "Small values stay visible next to large ones",
+        "Exponential growth appears as a straight line",
+        "Multiplication becomes addition"
+      ],
+      "referenceAnswer": "A logarithmic scale turns ratios into equal distances, so a factor of ten covers the same space whether you are going from one to ten or from a million to ten million. That does two useful things. A range spanning many orders of magnitude fits on one axis without the small values being crushed to nothing. And anything growing exponentially becomes a straight line, so the growth rate is just a slope you can read off.",
+      "scoringBands": {
+        "full": "Says equal distances represent equal ratios, notes the compression of range, and gives at least one consequence (small values visible, or exponentials become straight lines).",
+        "strong": "Gives the equal-distances-are-equal-ratios reading and the compression of range, without naming a consequence of it.",
+        "partial": "Says it compresses large ranges without the ratio interpretation.",
+        "weak": "Says logs 'make numbers smaller'.",
+        "none": "Describes a log scale as subtracting a constant, or as a linear rescaling."
+      },
+      "commonErrors": [
+        "Describing a log scale as just dividing by a large number",
+        "Claiming equal distances represent equal differences"
+      ]
+    },
+    {
+      "id": "s-009",
+      "topic": "Measurement error",
+      "principle": "Random error averages out; systematic error does not.",
+      "difficulty": "core",
+      "kind": "compare",
+      "prompt": "Compare random error and systematic error in a measurement, and say why taking more measurements helps with one but not the other.",
+      "rubric": "Credit for random error being unbiased scatter that averages out with repetition, versus systematic error being a consistent offset that repetition cannot remove.",
+      "keyPoints": [
+        "Random error scatters either side of the true value",
+        "Averaging many measurements shrinks random error",
+        "Systematic error offsets every measurement the same way",
+        "Averaging preserves that offset exactly",
+        "Systematic error needs calibration or a change of method, not more data"
+      ],
+      "referenceAnswer": "Random error scatters either side of the true value, so if you average many measurements the scatter partly cancels and the average converges. Systematic error pushes every measurement the same way — a scale that reads two grams heavy reads two grams heavy every time. Averaging a thousand of those gives you a very precise answer that is still two grams wrong. So more data fixes random error and does nothing at all for systematic error; that one needs calibration or a different method.",
+      "scoringBands": {
+        "full": "Contrasts unbiased scatter with a consistent offset, explains why averaging shrinks one and preserves the other, and says systematic error needs calibration.",
+        "strong": "Contrasts unbiased scatter with a consistent offset and explains why averaging shrinks the first, without reaching calibration as the remedy for the second.",
+        "partial": "Gets the distinction and that averaging helps random error, without explaining why it fails on systematic error.",
+        "weak": "Names the two kinds with no mechanism.",
+        "none": "Claims more measurements fix both."
+      },
+      "commonErrors": [
+        "Believing a large sample corrects a biased instrument",
+        "Confusing precision with accuracy"
+      ]
+    },
+    {
+      "id": "s-010",
+      "topic": "Conservation",
+      "principle": "A conservation law constrains what can happen without describing how it happens.",
+      "difficulty": "core",
+      "kind": "explain",
+      "prompt": "Explain what a conservation law tells you about a physical process, and what it deliberately does not tell you.",
+      "rubric": "Credit for a quantity being unchanged before and after, letting you relate endpoints without knowing the process, and for the limitation that it says nothing about the path or the mechanism.",
+      "keyPoints": [
+        "Some quantity has the same total before and after",
+        "It lets you relate the start and end states directly",
+        "You do not need to know what happened in between",
+        "It says nothing about the mechanism or the path taken",
+        "It constrains outcomes rather than predicting them"
+      ],
+      "referenceAnswer": "A conservation law says some quantity has the same total before and after, whatever happened in between. That is powerful because you can relate the start and end states directly without modelling the process at all — you do not need to know how the collision went to know the total momentum afterwards. What it deliberately does not tell you is the mechanism. It rules out possibilities; it does not say which of the remaining ones occurs, or by what route.",
+      "scoringBands": {
+        "full": "Says a quantity is unchanged before and after, that this relates endpoints without knowing the process, AND that it says nothing about mechanism or path.",
+        "strong": "Says the quantity is unchanged and that this relates endpoints without knowing the process, but does not state the limitation — that it is silent on mechanism or path.",
+        "partial": "Correct on the unchanged quantity and endpoint relation, no limitation stated.",
+        "weak": "States a specific conservation law without saying what such a law does.",
+        "none": "Claims a conservation law predicts the process in detail."
+      },
+      "commonErrors": [
+        "Treating a conservation law as a complete description of the dynamics",
+        "Applying it to an open system without noting what crosses the boundary"
+      ]
+    },
+    {
+      "id": "s-011",
+      "topic": "Sampling",
+      "principle": "A sample supports inference only if its selection is unrelated to what is measured.",
+      "difficulty": "core",
+      "kind": "spot-the-flaw",
+      "prompt": "A colleague says: 'I surveyed two thousand people on our website about whether people use the internet daily, and ninety-eight percent said yes, so with that sample size the result is reliable.' Find the flaw and say what would fix it.",
+      "rubric": "Credit for identifying selection bias - the sampling frame guarantees the answer - and for noting that sample size does not correct a biased frame. A fix samples from the population of interest.",
+      "keyPoints": [
+        "The sample was drawn from website visitors, who are all internet users",
+        "The selection is directly related to the thing being measured",
+        "A large sample makes a biased estimate more precise, not less biased",
+        "Sample size only reduces random error",
+        "The fix is a frame covering the whole population, not more responses"
+      ],
+      "referenceAnswer": "The flaw is the sampling frame, not the size. Everyone surveyed was already on a website, so they all use the internet — the selection is directly related to the thing being measured. Making the sample larger makes that biased estimate more precise, which is worse, not better: you get a tighter interval around the wrong number. Sample size only reduces random error and does nothing to bias. The fix is to sample from the whole population of interest, for instance by an address-based or random-digit method.",
+      "scoringBands": {
+        "full": "Identifies selection bias in the frame, explains that a bigger sample makes a biased estimate more precise rather than less biased, and proposes a frame covering the population.",
+        "strong": "Identifies the selection bias in the frame and proposes a better frame, without the key point that a larger sample makes a biased estimate more precise rather than less biased.",
+        "partial": "Spots the bias but attributes the problem partly to sample size.",
+        "weak": "Says the survey is 'not representative' with no mechanism.",
+        "none": "Accepts the reasoning, or objects only that two thousand is too few."
+      },
+      "commonErrors": [
+        "Believing a larger sample fixes a biased sampling frame",
+        "Confusing a margin of error with the presence of bias"
+      ]
+    },
+    {
+      "id": "s-012",
+      "topic": "Feedback",
+      "principle": "Negative feedback stabilises around a setpoint; positive feedback amplifies departures from it.",
+      "difficulty": "stretch",
+      "kind": "compare",
+      "prompt": "Compare negative and positive feedback in a system, and say why one tends to produce stability and the other tends to produce runaway behaviour.",
+      "rubric": "Credit for the sign of the correction relative to the deviation, and the consequence: opposing a deviation returns the system toward a setpoint, reinforcing it drives the system away.",
+      "keyPoints": [
+        "Negative feedback feeds back a correction opposing the deviation",
+        "That drives the system back toward a setpoint",
+        "Positive feedback reinforces the deviation instead",
+        "Small departures then grow rather than decay",
+        "Real systems are bounded by saturation or by some other limit"
+      ],
+      "referenceAnswer": "The difference is the sign of the correction relative to the deviation. Negative feedback feeds back something that opposes the departure, so a system knocked off its setpoint is pushed back toward it and settles — a thermostat is the standard case. Positive feedback feeds back something that reinforces the departure, so a small deviation grows into a bigger one and you get runaway. What stops runaway in practice is not the feedback but some limit — saturation, exhausting a resource, or the system breaking.",
+      "scoringBands": {
+        "full": "Names the sign of the correction as the distinction, explains return-to-setpoint versus growth of deviations, and notes real runaway is bounded by some limit.",
+        "strong": "Names the sign of the correction and explains stability versus growth of deviations, without noting that real runaway is bounded by some limit.",
+        "partial": "Correct on opposing versus reinforcing with stability and runaway, no bounding limit.",
+        "weak": "Gives examples of each with no account of why they behave differently.",
+        "none": "Reverses the two, or equates positive feedback with a good outcome."
+      },
+      "commonErrors": [
+        "Reading 'positive' and 'negative' as good and bad rather than as signs",
+        "Assuming positive feedback always destroys the system, ignoring saturation"
+      ]
+    }
+  ]
+}

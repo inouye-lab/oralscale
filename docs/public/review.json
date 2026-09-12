@@ -1,0 +1,177 @@
+{
+  "reviewer": "Codex",
+  "note": "Final overview developer note uses a clean GitHub link without a wrapping arrow. MIT verified against LICENSE; contribution invitation user-approved. Screenshot review confirmed secondary emphasis; PDFs remain the same layouts and app screenshots unchanged. License mutation check added.",
+  "reviewedOn": "2026-09-12",
+  "groups": {
+    "student.quickstart": {
+      "content": "c3d2234a85d2ce017cd7ebcada40cfe23a074f4bd24963969ee2cc28cbbb2a51",
+      "sources": {
+        "models/02-requirements-and-invariants.md": "9fc479e898bf2ae2b4017c7671237f92cec356d5f6863f819cde3c9da17e00da",
+        "models/03-state-machine.md": "a36df6c9ee60cf3cfaca4bbb742b601b76689cd778dbc9b7d7dde20a380d9419",
+        "docs/guides/STUDENT-GUIDE.md": "2f6a84cbedee1bce57a0123523eec50c2ad5f768861130e09f9e15cbbfafafc7",
+        "web/index.html": "b6500aafbe5a67cf9fa84c598c7b19f1d784adc3428b68858543af14e06e4c04",
+        "web/js/app.js": "1fe69fe8d513bd7d65b7eaf432b3f3046c76952359fc82056255254d7f7a4c76",
+        "docs/public/external-sources.json": "050547cfe30e98b944d443936741f5fe222842bd4b23c8b53dafc433c2dbf412"
+      }
+    },
+    "student.faq.retakes": {
+      "content": "bc321f01938b19546dc39214d51e2b84c572db1e702f6b6db69c951b4fb10edc",
+      "sources": {
+        "models/02-requirements-and-invariants.md": "9fc479e898bf2ae2b4017c7671237f92cec356d5f6863f819cde3c9da17e00da",
+        "docs/guides/STUDENT-GUIDE.md": "2f6a84cbedee1bce57a0123523eec50c2ad5f768861130e09f9e15cbbfafafc7",
+        "docs/public/external-sources.json": "050547cfe30e98b944d443936741f5fe222842bd4b23c8b53dafc433c2dbf412"
+      }
+    },
+    "student.faq.extra-time": {
+      "content": "69d42ee97e53e277a8c55f43990c17fa976c6e7af2158d3e44a08597b7cd4b7e",
+      "sources": {
+        "models/02-requirements-and-invariants.md": "9fc479e898bf2ae2b4017c7671237f92cec356d5f6863f819cde3c9da17e00da",
+        "web/index.html": "b6500aafbe5a67cf9fa84c598c7b19f1d784adc3428b68858543af14e06e4c04",
+        "web/js/app.js": "1fe69fe8d513bd7d65b7eaf432b3f3046c76952359fc82056255254d7f7a4c76"
+      }
+    },
+    "student.faq.time": {
+      "content": "d23fa2126f2b1cc6a664593731d8b0465287a4dcb975964b166df61812cba48d",
+      "sources": {
+        "models/02-requirements-and-invariants.md": "9fc479e898bf2ae2b4017c7671237f92cec356d5f6863f819cde3c9da17e00da",
+        "models/03-state-machine.md": "a36df6c9ee60cf3cfaca4bbb742b601b76689cd778dbc9b7d7dde20a380d9419",
+        "web/js/app.js": "1fe69fe8d513bd7d65b7eaf432b3f3046c76952359fc82056255254d7f7a4c76"
+      }
+    },
+    "student.faq.lost-key": {
+      "content": "a974c623589e9e9a80108f1fcedba907e5e1468d4318219c53506363b7fc7a0a",
+      "sources": {
+        "docs/guides/STUDENT-GUIDE.md": "2f6a84cbedee1bce57a0123523eec50c2ad5f768861130e09f9e15cbbfafafc7",
+        "web/index.html": "b6500aafbe5a67cf9fa84c598c7b19f1d784adc3428b68858543af14e06e4c04"
+      }
+    },
+    "student.faq.technical-help": {
+      "content": "6471676f04936a21ad5b5a679408121fea31f2f1327799b95ef1662a75da4825",
+      "sources": {
+        "models/02-requirements-and-invariants.md": "9fc479e898bf2ae2b4017c7671237f92cec356d5f6863f819cde3c9da17e00da",
+        "models/03-state-machine.md": "a36df6c9ee60cf3cfaca4bbb742b601b76689cd778dbc9b7d7dde20a380d9419",
+        "web/index.html": "b6500aafbe5a67cf9fa84c598c7b19f1d784adc3428b68858543af14e06e4c04",
+        "docs/public/external-sources.json": "050547cfe30e98b944d443936741f5fe222842bd4b23c8b53dafc433c2dbf412"
+      }
+    },
+    "student.faq.codes": {
+      "content": "0f28c044bb13f2617851fe1ea8961339ddf25506b146480a111388f93b3f4205",
+      "sources": {
+        "models/02-requirements-and-invariants.md": "9fc479e898bf2ae2b4017c7671237f92cec356d5f6863f819cde3c9da17e00da",
+        "models/06-threat-model.md": "22524e8c1c4e5b0b178da4a356d6d87dd7e9324a441111c076122217e72bca1d",
+        "docs/guides/STUDENT-GUIDE.md": "2f6a84cbedee1bce57a0123523eec50c2ad5f768861130e09f9e15cbbfafafc7"
+      }
+    },
+    "student.faq.privacy": {
+      "content": "8ce9c5d5ab0110ec0dcf9d0fdc3f8955c41f786fce0d9179c167afe1f503aa85",
+      "sources": {
+        "models/04-architecture-and-zones.md": "88807ce8a6d61ba302023e9dc0640364433d248e202d51cf5d4663276e817132",
+        "models/02-requirements-and-invariants.md": "9fc479e898bf2ae2b4017c7671237f92cec356d5f6863f819cde3c9da17e00da"
+      }
+    },
+    "student.faq.ai-grading": {
+      "content": "f7dd2906768454554bfa220cbf1e4895edea452e989155a5e1217a9935fb923b",
+      "sources": {
+        "models/04-architecture-and-zones.md": "88807ce8a6d61ba302023e9dc0640364433d248e202d51cf5d4663276e817132",
+        "models/02-requirements-and-invariants.md": "9fc479e898bf2ae2b4017c7671237f92cec356d5f6863f819cde3c9da17e00da",
+        "docs/reference/GRADER-BACKENDS.md": "2c69e8eababbb1276af9983eec052829670f5b10716870c11789496939eee7f0"
+      }
+    },
+    "faculty.quickstart": {
+      "content": "756bd8d36dd4ee2ac1a2e7465f0f7f2f61a1b17189ffa0fc5be5679397a191fe",
+      "sources": {
+        "README.md": "fd5d5074f823a83d32d1146384d3f157ce3374455aac7f9c4487605e0338394a",
+        "docs/guides/QUICKSTART.md": "c9bf33a980cd0eac1c7f79684e584a7b0b41843c1804f98887b6c82340cb43fb",
+        "docs/guides/QUESTION-DESIGN-GUIDE.md": "1be2e76ff0b1e4d796372e094721667e2e68ef71ceb20f7da69fd46834fc766e",
+        "docs/reference/bank-generation-spec.md": "da5a0e7ac7f1a28b8ae1957ff0ddc164629acca5e8f4a9f4f5ed61723fe8f2fa",
+        "models/02-requirements-and-invariants.md": "9fc479e898bf2ae2b4017c7671237f92cec356d5f6863f819cde3c9da17e00da",
+        "docs/public/external-sources.json": "050547cfe30e98b944d443936741f5fe222842bd4b23c8b53dafc433c2dbf412"
+      }
+    },
+    "faculty.faq.setup": {
+      "content": "3b0d125ff5bb5bbb58670f3b4c66bf133139b0439f326829081955a36c37dd26",
+      "sources": {
+        "README.md": "fd5d5074f823a83d32d1146384d3f157ce3374455aac7f9c4487605e0338394a",
+        "docs/guides/QUICKSTART.md": "c9bf33a980cd0eac1c7f79684e584a7b0b41843c1804f98887b6c82340cb43fb",
+        "docs/public/external-sources.json": "050547cfe30e98b944d443936741f5fe222842bd4b23c8b53dafc433c2dbf412"
+      }
+    },
+    "faculty.faq.questions": {
+      "content": "fea7084e6de11201e42aeeb2c8b7c1d4a87a1ec194984b45422d86ccd113c96c",
+      "sources": {
+        "docs/guides/QUESTION-DESIGN-GUIDE.md": "1be2e76ff0b1e4d796372e094721667e2e68ef71ceb20f7da69fd46834fc766e",
+        "docs/reference/bank-generation-spec.md": "da5a0e7ac7f1a28b8ae1957ff0ddc164629acca5e8f4a9f4f5ed61723fe8f2fa"
+      }
+    },
+    "faculty.faq.bank": {
+      "content": "71c4e87623619cf9e839c05c71a72a7ba00faee3154d392a666f359ca6c934e5",
+      "sources": {
+        "docs/guides/QUESTION-DESIGN-GUIDE.md": "1be2e76ff0b1e4d796372e094721667e2e68ef71ceb20f7da69fd46834fc766e",
+        "docs/reference/bank-generation-spec.md": "da5a0e7ac7f1a28b8ae1957ff0ddc164629acca5e8f4a9f4f5ed61723fe8f2fa",
+        "README.md": "fd5d5074f823a83d32d1146384d3f157ce3374455aac7f9c4487605e0338394a"
+      }
+    },
+    "faculty.faq.cost": {
+      "content": "3e7335bd0919b84608f77846e00f45f0c3b9844d44aabb54718a4a0c82295d2c",
+      "sources": {
+        "docs/guides/QUICKSTART.md": "c9bf33a980cd0eac1c7f79684e584a7b0b41843c1804f98887b6c82340cb43fb",
+        "README.md": "fd5d5074f823a83d32d1146384d3f157ce3374455aac7f9c4487605e0338394a",
+        "docs/reference/GRADER-BACKENDS.md": "2c69e8eababbb1276af9983eec052829670f5b10716870c11789496939eee7f0",
+        "docs/public/external-sources.json": "050547cfe30e98b944d443936741f5fe222842bd4b23c8b53dafc433c2dbf412"
+      }
+    },
+    "faculty.faq.debug": {
+      "content": "dccc08665355ed43ba86dc4bffbb6ca599fe6b627ec27b4e651d373dd82c9b94",
+      "sources": {
+        "docs/guides/QUICKSTART.md": "c9bf33a980cd0eac1c7f79684e584a7b0b41843c1804f98887b6c82340cb43fb",
+        "README.md": "fd5d5074f823a83d32d1146384d3f157ce3374455aac7f9c4487605e0338394a",
+        "models/02-requirements-and-invariants.md": "9fc479e898bf2ae2b4017c7671237f92cec356d5f6863f819cde3c9da17e00da"
+      }
+    },
+    "faculty.faq.privacy": {
+      "content": "273e128f491ccf1f108dfd7c3bcfd82beb1608070497c683732f086755f2a903",
+      "sources": {
+        "models/04-architecture-and-zones.md": "88807ce8a6d61ba302023e9dc0640364433d248e202d51cf5d4663276e817132",
+        "models/02-requirements-and-invariants.md": "9fc479e898bf2ae2b4017c7671237f92cec356d5f6863f819cde3c9da17e00da",
+        "docs/reference/GRADER-BACKENDS.md": "2c69e8eababbb1276af9983eec052829670f5b10716870c11789496939eee7f0"
+      }
+    },
+    "faculty.faq.extra-time": {
+      "content": "9f51f9864c9ff8539b34c0b9b7fa1c62087a564a8448e73d3ddc3d38ac589952",
+      "sources": {
+        "models/02-requirements-and-invariants.md": "9fc479e898bf2ae2b4017c7671237f92cec356d5f6863f819cde3c9da17e00da",
+        "web/index.html": "b6500aafbe5a67cf9fa84c598c7b19f1d784adc3428b68858543af14e06e4c04",
+        "web/js/app.js": "1fe69fe8d513bd7d65b7eaf432b3f3046c76952359fc82056255254d7f7a4c76",
+        "docs/public/external-sources.json": "050547cfe30e98b944d443936741f5fe222842bd4b23c8b53dafc433c2dbf412"
+      }
+    },
+    "faculty.faq.release": {
+      "content": "5faaf925a88e7ed9deac69f962596c1cff36f1f47b332caaa3587e78aa487212",
+      "sources": {
+        "docs/guides/QUICKSTART.md": "c9bf33a980cd0eac1c7f79684e584a7b0b41843c1804f98887b6c82340cb43fb",
+        "models/02-requirements-and-invariants.md": "9fc479e898bf2ae2b4017c7671237f92cec356d5f6863f819cde3c9da17e00da",
+        "docs/guides/STUDENT-GUIDE.md": "2f6a84cbedee1bce57a0123523eec50c2ad5f768861130e09f9e15cbbfafafc7",
+        "docs/public/external-sources.json": "050547cfe30e98b944d443936741f5fe222842bd4b23c8b53dafc433c2dbf412"
+      }
+    },
+    "presentation": {
+      "LICENSE": "2d41fbe9cb717b0e796ff70e35d8b86bd61e0b67542d5b67a7e4e7512898f87a",
+      "docs/public/content.json": "59d4bac2dbf1913dd5c30062a487cfc447e6bf804961843ace23df261cd11c58",
+      "docs/public/site/guide.css": "1e79f7556b2a27c6eca3bfd43675e99866141701d6d9543466cb63693140ca5a",
+      "tools/public-guides/build.cjs": "e75de25103acf3089573746926bcfcd32aa87858417da9334e763843b5275054",
+      "tools/public-guides/check.cjs": "1fecd8e851577151b57abc4bf9d0adbe9ebb6743e79baa14ef897ff95ca821dc",
+      "tools/public-guides/evidence.cjs": "a9eb8227ead21d2582ae12f410f635ac7203e4389cbb4190283d88aa3ea85855",
+      "docs/public/GOVERNANCE.md": "cc7c9dd48b6a17c85138cd3550ee3dc296c7bdae0011925a4a8c4097f97c4297",
+      "models/08-measurement-model.md": "ee23bc82add83150b582a1121895d3bf700be7e17fb7e08f2f1ec733a609888b"
+    }
+  },
+  "artifacts": {
+    "docs/public/site/assets/quiz-key.png": "f6af3550ee479b7400d145be0f5deb2c169d5ebe847ce572a031f5dd8fc0a84d",
+    "docs/public/site/assets/say-code.png": "2ab2302fb4ed4fe7ef92b54daae41f958d16e014b015a499adc742539f62d9ee",
+    "docs/public/site/assets/answer.png": "73eaab2f90f144449a6969ac9f80054ab740dd3df575883715104dd3a777cc07",
+    "docs/public/site/assets/app-overview.png": "20f18095e09a884e536a3f3b88e66146292b0993083e1bb91270405c82b963be",
+    "docs/public/site/assets/download.png": "949e0a65cbb7aeeca32327177df4da69f617fbefaaa964b6fe067afdbf5989ee",
+    "docs/public/site/student-guide.pdf": "21a52ac2680e8f6537673d42cae1b2f54509559641a09c2ff3dd4ffcdfcff466",
+    "docs/public/site/faculty-guide.pdf": "3dd7123b64b9970d4f7b5aef4ee22db033317c33db6717d15a6651edb87df46b"
+  }
+}

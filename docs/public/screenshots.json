@@ -1,0 +1,20 @@
+{
+  "kind": "Actual app renderer with synthetic responses; no live course or personal data",
+  "inputs": {
+    "web/index.html": "b6500aafbe5a67cf9fa84c598c7b19f1d784adc3428b68858543af14e06e4c04",
+    "web/css/style.css": "92d844980e8ec9d79ef61ebede3be2493f9a70c0749ebf0654eef94975d31fd7",
+    "web/js/app.js": "1fe69fe8d513bd7d65b7eaf432b3f3046c76952359fc82056255254d7f7a4c76",
+    "web/js/recorder.js": "a2d0af25f992db5abd074881990c5dd05c366650efb156fb78c3d222ed750621",
+    "web/js/config.js": "2d829ce0a3dd415880af4aa2c2131741d224f8e9316425f6dd2c9a1db8a76c4a",
+    "web/js/richtext.mjs": "8b0407889b8992c745086fa48e72023e1e083d13163d0449f12b9502b66920be",
+    "tools/public-guides/capture.cjs": "68f223cf11d306cb8c09b6136d03360a8337ac981464204c470478403853ae6b",
+    "tools/public-guides/evidence.cjs": "a9eb8227ead21d2582ae12f410f635ac7203e4389cbb4190283d88aa3ea85855"
+  },
+  "outputs": {
+    "docs/public/site/assets/quiz-key.png": "f6af3550ee479b7400d145be0f5deb2c169d5ebe847ce572a031f5dd8fc0a84d",
+    "docs/public/site/assets/say-code.png": "2ab2302fb4ed4fe7ef92b54daae41f958d16e014b015a499adc742539f62d9ee",
+    "docs/public/site/assets/answer.png": "73eaab2f90f144449a6969ac9f80054ab740dd3df575883715104dd3a777cc07",
+    "docs/public/site/assets/app-overview.png": "20f18095e09a884e536a3f3b88e66146292b0993083e1bb91270405c82b963be",
+    "docs/public/site/assets/download.png": "949e0a65cbb7aeeca32327177df4da69f617fbefaaa964b6fe067afdbf5989ee"
+  }
+}

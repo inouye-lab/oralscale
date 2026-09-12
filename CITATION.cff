@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+title: "OralScale: scalable, privacy-preserving oral assessment"
+message: "If you use this software or its design in your teaching or research, please cite it."
+type: software
+authors:
+  - family-names: Inouye
+    given-names: David
+    name-particle: I.
+    website: "https://www.davidinouye.com"
+    affiliation: "Purdue University"
+abstract: >-
+  OralScale delivers oral assessment at scale using a static web application and a
+  stateless edge signer, with a learning-management system as the system of record.
+  A cryptographic certificate establishes that an answer was spoken live, without
+  sending audio anywhere but the system of record, and grading runs locally by
+  default so that student work does not leave the institution's boundary.
+keywords:
+  - oral assessment
+  - academic integrity
+  - engineering education
+  - privacy-preserving assessment
+  - automated grading
+license: MIT
+version: 0.1.0-alpha.1
+repository-code: "https://github.com/inouye-lab/oralscale"

@@ -1,0 +1,55 @@
+{
+  "courseId": "<your-course-id>",
+  "courseIdNote": "Lowercase, no spaces, e.g. 'chem101-fall2026'. ⚠️ This is CRYPTOGRAPHIC INPUT: it is hashed into student identifiers and quiz keys (server/lib/protocol.js). Renaming it AFTER you have issued keys invalidates every one of them, silently. Choose it once, before you mint keys.",
+  "title": "<Course number — Course title (Term Year)>",
+  "webappUrl": "https://<your-pages-deployment>/",
+  "pseudonymSalt": "GENERATE-A-FRESH-ONE",
+  "pseudonymSaltNote": "PUBLIC salt for the in-browser email hash. Not a secret (it rides in the course link), but it MUST match between the web link and the autograder, and MUST DIFFER PER COURSE. Generate with: node -e \"console.log(require('crypto').randomBytes(16).toString('hex'))\". Never copy one from another course.",
+  "accessKeyEpoch": 1,
+  "accessKeyEpochNote": "Bump to re-mint EVERY quiz key in this course, invalidating the ones students hold. Only needed if gen-access-keys.js reports an id collision.",
+  "gradingPolicy": {
+    "gradingPolicyNote": "Course-wide grading policy. Separate from `defaults` on purpose: `defaults` holds per-question knobs (timing, question count), this holds rules about the mark. An individual assignment may override it by carrying its own \"gradingPolicy\" block.",
+    "late": {
+      "mode": "none",
+      "modeNote": "DEFAULT \"none\": everything is graded, no late deduction, whenever it arrives. Set \"steps\" to deduct. Anything unrecognised falls back to \"none\" and is flagged — a misconfigured policy grading everything is the safe failure.",
+      "graceMinutes": 5,
+      "graceMinutesNote": "Lateness under this is ignored. Covers the student who hit submit as the clock turned and the upload took ninety seconds. Only used when mode is \"steps\".",
+      "steps": [
+        {
+          "withinDays": 1,
+          "deductPercentOfMax": 20
+        }
+      ],
+      "stepsNote": "Read as: up to `withinDays` days late costs `deductPercentOfMax` percent OF THE ASSIGNMENT MAXIMUM. On a 10-point assignment, 20% is 2 points — whether the student scored 9 or 4. Percent of the maximum rather than of the earned score, because \"a day late costs two marks\" should mean the same thing for everyone. Add more entries for a gentler ramp, e.g. {\"withinDays\": 2, \"deductPercentOfMax\": 40}. These are INERT until mode is \"steps\".",
+      "afterSteps": "zero",
+      "afterStepsNote": "What happens past the last step. \"zero\" scores 0; \"keepLast\" keeps applying the final step's deduction indefinitely, so very late work still earns something.",
+      "caveat": "IMPORTANT: Gradescope does not expose PER-STUDENT due-date extensions to an autograder — only the assignment-level due date. A student you granted an extension looks exactly like a student who is late. Every deduction therefore tells you and the student to check, and you can override the score in Gradescope. If you grant extensions often, consider leaving mode as \"none\" and handling lateness by hand."
+    }
+  },
+  "defaults": {
+    "limitSec": 120,
+    "limitSecNote": "Answer time per QUESTION, shown as the student's countdown. A ceiling, not a target — it only binds on a student who needs the time, which is exactly who should not be cut off.",
+    "bufferSec": 20,
+    "questionsPerAttempt": 5,
+    "requireAccessKey": true,
+    "requireAccessKeyNote": "INV-SEC-8. Leave this TRUE on any real course. The quiz link is public, so without a key anyone can invent an identity and mine the week's bank.",
+    "scoreAggregation": "dropLowest",
+    "gradingBackend": "local",
+    "gradingBackendNote": "LEAVE THIS AS 'local' UNLESS YOU HAVE DECIDED OTHERWISE, DELIBERATELY. 'local' runs a small open-weights model INSIDE the Gradescope container, so the transcript NEVER LEAVES IT. 'genai' sends the de-identified, PII-redacted transcript to a remote grading service, which grades better, but that service may hold no FERPA certification and the transcript leaves your institution's boundary. That is the instructor's risk to take, not this software's to take on your behalf. THERE ARE NO FALLBACKS (INV-GRADE-1): the grader you name here is the one used, and if it cannot run, affected submissions are NOT graded and are flagged for you to regrade the whole cohort together. Grading a student with a different backend would measure them by a method nobody else was measured by. If you do switch, update the student-facing privacy disclosure to match. See docs/reference/GRADER-BACKENDS.md and PRIVACY.md.",
+    "gradingQualityNote": "GRADING QUALITY. The local grader is qwen2.5-3b and there is no model choice: eleven alternatives from 1.5B to 9B were measured against it (Qwen2.5/3/3.5, Gemma 3/4, Phi-4-mini, Llama 3.2, Ministral) and none won — bigger models grade WORSE here because they are generous, which shows up as ties. It needs 2.07 GB peak in the container, 66% headroom, and its memory does NOT grow with questionsPerAttempt. IF YOU WANT BETTER GRADING, the choice is the BACKEND, not the model: Purdue GenAI (qwen3.6:27b) marks NOTICEABLY BETTER than the local model on every metric measured. The cost is locality — the de-identified, PII-redacted transcript leaves the Gradescope container to a service with no FERPA certification, which is why 'local' is the default. Set gradingBackend='genai' to accept that trade. See docs/reference/GRADER-BACKENDS.md.",
+    "maxPoints": 10,
+    "scoreBonus": 0,
+    "supportChannel": "Piazza",
+    "supportChannelNote": "Where a student should ask for help if something fails on OUR side — named in the message they see when a submission could not be graded. Use whatever your course actually reads."
+  },
+  "assignments": {
+    "week-01-<topic>": {
+      "shortTitle": "Oral Quiz 1",
+      "shortTitleNote": "REQUIRED on every assignment (INV-USE-1). The short, TOPIC-FREE label the app shows above the quiz and the only assignment text stamped into a student's link. It is display only \u2014 nothing routes, grades or selects questions on it. Keep it to the quiz number: the assignment's `title` and its id both name the week's subject, and printing either one puts a hint above the quiz and inside the link. It also has to stay true if the quiz is re-scoped or becomes a review. Matching the Gradescope assignment name is useful but not required. gen-url.js and check-course-safety.js both refuse without it.",
+      "week": "01",
+      "bank": "banks/week-01-<topic>.json",
+      "bankNote": "Resolved RELATIVE TO THIS FILE, not to the OralScale repo root (INV-COURSE-1), so this folder works wherever it is cloned."
+    }
+  },
+  "signerUrl": "https://<your-signer>.workers.dev"
+}

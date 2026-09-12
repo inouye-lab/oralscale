@@ -1,0 +1,86 @@
+name: 🐛 Bug report
+description: Something behaved incorrectly and you can describe how to reproduce it.
+labels: ["bug", "needs-reproduction"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 🚨 Before you type anything
+
+        **Do not paste student data, secrets, quiz keys, or question-bank content.**
+        No names, emails, IDs, grades, transcripts, audio, `.env` contents, or course links
+        (a course link carries a signed token).
+
+        Redact first. A report is never rejected for being too redacted.
+
+        **If this is a vulnerability or a suspected data exposure, stop.** Close this and use
+        private security reporting instead — see `SECURITY.md`.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Confirm before submitting
+      options:
+        - label: This contains no student data, secrets, quiz keys, or bank content.
+          required: true
+        - label: This is not a security or privacy vulnerability.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The release tag you deployed, or the `version` in `package.json`.
+      placeholder: "0.1.0-alpha.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Is a live course affected right now?
+      options:
+        - "No — testing or evaluating"
+        - "Yes, but students can still submit"
+        - "Yes — students are blocked from submitting"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: >
+        Numbered steps. If you can reproduce it against `courses/demo/`, say so — a demo-course
+        reproduction is worth far more than a description of a private course.
+      placeholder: |
+        1. …
+        2. …
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: |
+        Browser + version:
+        Device / OS:
+        Signer: Cloudflare Worker / local Node
+        Grading backend: local / genai / heuristic
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Redacted diagnostics
+      description: Error messages or logs, with identifiers and tokens removed.
+      render: text

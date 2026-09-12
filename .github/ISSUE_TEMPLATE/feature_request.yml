@@ -1,0 +1,54 @@
+name: 💡 Feature or change proposal
+description: Propose new behaviour or a change to existing behaviour.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This project is **model-first**: the models in `models/` are the source of truth, and a
+        behaviour change means a model change plus, for any hard property, a new `INV-` invariant
+        and a test. Proposals that engage with that are much easier to accept.
+
+        **No student data, secrets, or bank content**, here or anywhere else in this repository.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you hitting?
+      description: The situation, not the solution. What did you try to do, and what got in the way?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like it to do?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What did you consider or try instead?
+      description: Including whether an existing configuration knob nearly does this.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area does this touch?
+      multiple: true
+      options:
+        - Student web app
+        - Signer / protocol
+        - Autograder / grading
+        - Question banks and authoring
+        - Setup and deployment
+        - Privacy or security behaviour
+        - Accessibility
+        - Documentation
+    validations:
+      required: true
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Does this change a hard property?
+      description: Privacy, security, integrity, or grading correctness.
+      options:
+        - label: I believe this would need a new or changed `INV-` invariant.
+        - label: This would change behaviour a running course depends on.

@@ -1,0 +1,90 @@
+{
+  "courseId": "shell-for-testsuite",
+  "title": "Test-suite shell — not a course",
+  "note": "SHELL FOR THE TEST SUITE. This is not a course, has never been taught, and must never be deployed: no signer URL, no webapp URL, a deliberately worthless salt, and no banks of its own (it borrows the demo course's). It exists for one reason: the assignment-resolution tests need a course with a realistic set of weekly assignments, and that structure used to come from a real course whose content no longer ships with the engine (INV-COURSE-3). Weeks skip 10 ON PURPOSE — \"Quiz 10\" must be REFUSED rather than guessed, and a shell with no gap could not test that.",
+  "pseudonymSalt": "00000000000000000000000000000000",
+  "pseudonymSaltNote": "Fixed and worthless on purpose. Never copy this into a real course.",
+  "accessKeyEpoch": 1,
+  "webappUrl": "",
+  "signerUrl": "",
+  "defaults": {
+    "limitSec": 120,
+    "questionsPerAttempt": 1,
+    "requireAccessKey": true,
+    "bufferSec": 20,
+    "maxPoints": 10
+  },
+  "assignments": {
+    "week-01-intro-and-scope": {
+      "shortTitle": "Oral Quiz 1",
+      "shortTitleNote": "The short label the app shows above the quiz, and the only assignment text stamped into a link (INV-USE-1). It exists because these ids name their topics — `week-04-methods-core` would tell a student the subject before a question was served, both on screen and inside the link. gen-url.js REFUSES to mint for an assignment whose id carries no quiz number and has no shortTitle, which is exactly this course. A week number is deliberately not derived from the id: week 4 is not necessarily quiz 4, and a confidently wrong number is worse than none.",
+      "week": "01",
+      "bank": "../demo/banks/general-stem.json"
+    },
+    "week-02-foundations": {
+      "shortTitle": "Oral Quiz 2",
+      "week": "02",
+      "bank": "../demo/banks/general-stem.json"
+    },
+    "week-03-representations": {
+      "shortTitle": "Oral Quiz 3",
+      "week": "03",
+      "bank": "../demo/banks/general-stem.json"
+    },
+    "week-04-methods-core": {
+      "shortTitle": "Oral Quiz 4",
+      "week": "04",
+      "bank": "../demo/banks/general-stem.json"
+    },
+    "week-05-optimisation": {
+      "shortTitle": "Oral Quiz 5",
+      "week": "05",
+      "bank": "../demo/banks/general-stem.json"
+    },
+    "week-06-regularisation": {
+      "shortTitle": "Oral Quiz 6",
+      "week": "06",
+      "bank": "../demo/banks/general-stem.json"
+    },
+    "week-07-architectures": {
+      "shortTitle": "Oral Quiz 7",
+      "week": "07",
+      "bank": "../demo/banks/general-stem.json"
+    },
+    "week-08-sequences": {
+      "shortTitle": "Oral Quiz 8",
+      "week": "08",
+      "bank": "../demo/banks/general-stem.json"
+    },
+    "week-09-attention": {
+      "shortTitle": "Oral Quiz 9",
+      "week": "09",
+      "bank": "../demo/banks/general-stem.json"
+    },
+    "week-11-probability": {
+      "shortTitle": "Oral Quiz 11",
+      "week": "11",
+      "bank": "../demo/banks/general-stem.json"
+    },
+    "week-12-latent-variables": {
+      "shortTitle": "Oral Quiz 12",
+      "week": "12",
+      "bank": "../demo/banks/general-stem.json"
+    },
+    "week-13-generative": {
+      "shortTitle": "Oral Quiz 13",
+      "week": "13",
+      "bank": "../demo/banks/general-stem.json"
+    },
+    "week-14-decision-making": {
+      "shortTitle": "Oral Quiz 14",
+      "week": "14",
+      "bank": "../demo/banks/general-stem.json"
+    },
+    "week-15-advanced-topics": {
+      "shortTitle": "Oral Quiz 15",
+      "week": "15",
+      "bank": "../demo/banks/general-stem.json"
+    }
+  }
+}

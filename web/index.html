@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1220" />
+  <title>OralScale — Oral Quiz</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <h1>OralScale</h1>
+      <p class="tag">Your audio stays on your device and goes only to Gradescope.</p>
+      <!-- WHICH QUIZ THIS LINK IS FOR (INV-USE-1).
+           Every quiz has its own link and they look identical. Naming the
+           assignment here, from the signed token itself, is what lets a student
+           notice they opened last week's link BEFORE they record against it. -->
+      <div id="quizWhich" class="quizwhich hidden" role="note">
+        <span class="qw-label">This link is for</span>
+        <b id="quizWhichTitle" class="qw-title">&mdash;</b>
+        <span id="quizWhichIds" class="qw-ids"></span>
+        <!-- Deliberately generic about WHERE the link came from. Links have been
+             handed out over Piazza, and may later come from Brightspace or from
+             Gradescope itself; naming one of them makes the sentence wrong for
+             the others. All the student needs to realise is that they should be
+             using a different link. -->
+        <span class="qw-hint">Not the quiz you meant? Every quiz has its own link &mdash;
+          go back and open the link for the assignment you want.</span>
+      </div>
+    </header>
+
+    <!-- IDENTITY -->
+    <section id="identityCard" class="card hidden" tabindex="-1">
+      <h2 id="identityTitle" tabindex="-1">Your quiz key</h2>
+
+      <!-- KEY-ONLY (default). One field, no email, nothing derived from one. -->
+      <div id="keyMode">
+        <label class="fieldlabel" for="keyInput">Enter your personal quiz key</label>
+        <!-- A password field, so a password manager offers to save it and can fill
+             it back. The key IS a credential and lasts the whole term, so asking
+             students to find and paste it every time is the thing that pushes them
+             into keeping it somewhere worse. `current-password` is what managers
+             look for; the wrapper positions the reveal button inside the field. -->
+        <div class="pwwrap">
+          <input id="keyInput" class="field field-pw" type="password" inputmode="latin"
+                 autocapitalize="characters" spellcheck="false" name="quizkey"
+                 autocomplete="current-password" placeholder="ABCD-EFGH-JKMN-PQRS"
+                 aria-describedby="keyHint keyHelp" />
+          <button id="keyReveal" class="pwtoggle" type="button"
+                  aria-controls="keyInput" aria-pressed="false" aria-label="Show quiz key">
+            <span aria-hidden="true">👁</span>
+          </button>
+        </div>
+        <!-- Last four characters while hidden: enough to tell "I pasted the right
+             key" from "I pasted last term's", without putting the whole credential
+             on screen in a room full of people. -->
+        <p id="keyHint" class="fieldhint hidden" role="status" aria-live="polite"></p>
+        <p id="keyHelp" class="fieldhelp">
+          Posted for you in <b>Brightspace</b>. It is also in your Gradescope feedback if you submit
+          this assignment without a recording. This is the <b>only</b> thing you enter &mdash; we
+          never ask for your email, so nothing about your identity is sent to the quiz server.
+          Keep the key to yourself.
+        </p>
+      </div>
+
+      <!-- OPEN MODE (courses that run without keys). -->
+      <div id="emailMode" class="hidden">
+        <label class="fieldlabel" for="emailInput">Your Purdue email</label>
+        <input id="emailInput" class="field" type="email" inputmode="email" autocomplete="email"
+               spellcheck="false" placeholder="you@purdue.edu"
+               aria-describedby="emailHelp" />
+        <p id="emailHelp" class="fieldhelp">
+          Your email is <b>scrambled inside this browser</b> before anything is sent. The quiz
+          server only ever receives the scrambled value &mdash; never your address.
+        </p>
+      </div>
+
+      <div id="codeMode" class="hidden">
+        <label class="fieldlabel" for="codeInput">Your private code</label>
+        <!-- Same treatment: it is a term-long credential too, and leaving one of
+             the two in cleartext would just teach students the masking is cosmetic. -->
+        <div class="pwwrap">
+          <input id="codeInput" class="field field-pw" type="password" inputmode="latin"
+                 autocapitalize="characters" spellcheck="false" name="privatecode"
+                 autocomplete="current-password" placeholder="ABCD-EFGH-JKMN"
+                 aria-describedby="codeHint codeHelp" />
+          <button id="codeReveal" class="pwtoggle" type="button"
+                  aria-controls="codeInput" aria-pressed="false" aria-label="Show private code">
+            <span aria-hidden="true">👁</span>
+          </button>
+        </div>
+        <p id="codeHint" class="fieldhint hidden" role="status" aria-live="polite"></p>
+        <p id="codeHelp" class="fieldhelp">
+          Get this from Gradescope: submit once to this assignment without a recording and the
+          feedback shows your code. Nothing derived from your email is ever sent.
+        </p>
+      </div>
+
+      <button id="identityNext" class="primary big">Continue</button>
+      <button id="usePrivateCode" class="linkish hidden">Use a private code instead &rsaquo;</button>
+      <button id="useEmail" class="linkish hidden">&lsaquo; Use my email instead</button>
+
+      <p id="identityErr" class="fieldErr" role="alert"></p>
+    </section>
+
+    <!-- LANDING -->
+    <section id="landingCard" class="card hidden" tabindex="-1">
+      <h2 id="landingTitle" tabindex="-1">Oral quiz</h2>
+      <p class="who">Identifying as <b id="whoami">student</b> &middot;
+        <button id="changeIdentity" class="linkish inline">change</button></p>
+      <ul class="prep">
+        <li><span aria-hidden="true">🔢</span> <b>Four digits appear first</b> — read them out loud, one at a time.</li>
+        <li><span aria-hidden="true">❓</span> Your <b>question</b> appears a few seconds later. The timer starts then, not before.</li>
+        <li><span aria-hidden="true">⏱️</span> A live countdown shows the time left on <b>each</b> question — usually a couple of minutes. It starts when the question appears, not before.</li>
+        <li><span aria-hidden="true">🔢</span> When you tap <b>I’m done with this question</b>, four more digits appear — <b>read those aloud too</b>. If another question follows, it comes right after.</li>
+        <li><span aria-hidden="true">🔁</span> Don’t like the question or the recording? <b>Retake anytime</b> for a fresh one.</li>
+      </ul>
+      <p class="notice" role="note">
+        <b>Answer the question only.</b> Please don’t say your name, your student ID, your address,
+        or anything else personal — nothing outside the question is needed, and it would end up in
+        the transcript.
+      </p>
+      <!-- EXTENDED TIME (DRC accommodations). Collapsed by default: it is
+           irrelevant to most students, and putting a disability question in
+           front of everyone would be both noise and a nudge. -->
+      <div class="accom">
+        <button id="accomToggle" class="linkish" type="button"
+                aria-expanded="false" aria-controls="accomPanel">
+          I have DRC accommodations for extended time
+        </button>
+        <div id="accomPanel" class="accompanel hidden">
+          <label class="fieldlabel" for="accomSelect">Extended time granted to you</label>
+          <select id="accomSelect" class="field">
+            <option value="1" selected>No extended time</option>
+            <option value="1.25">1.25 &times; time</option>
+            <option value="1.5">1.5 &times; time</option>
+            <option value="1.75">1.75 &times; time</option>
+            <option value="2">2 &times; time</option>
+          </select>
+          <p id="accomHelp" class="fieldhelp">
+            Pick the extension <b>you have already been granted</b>. Your countdown on every
+            question is multiplied by it.
+            <br /><br />
+            <b>This is checked against your accommodations in Gradescope when your work is
+            graded.</b> Choosing less than you are entitled to, or nothing at all, is always
+            fine and is never held against you — and so is finishing early. The only thing
+            that gets flagged for your instructor is selecting <i>more</i> time than you have
+            been granted and then using it.
+            <br /><br />
+            Don’t have an accommodation set up yet? Leave this alone and speak to your
+            instructor or your disability resource office — it is arranged there, not here.
+          </p>
+        </div>
+      </div>
+
+      <button id="startBtn" class="primary big">Allow mic &amp; start</button>
+      <details class="how">
+        <summary>How it works &amp; privacy</summary>
+        <p><b>Where your recording goes.</b> The audio is recorded in this browser and is uploaded
+        only to Gradescope, with the rest of your submission. It is not sent anywhere else, and this
+        page never uploads it to the quiz server — that server only ever receives a fingerprint
+        (hash) of the audio and some timestamps, which is what lets it certify that you answered
+        live without hearing a word of it.</p>
+        <p><b>What happens after you upload.</b> Inside Gradescope, the audio is turned into text by
+        software running there. The <i>text</i> of your answer is then sent to Purdue’s GenAI Studio
+        to be graded against the rubric; the audio never is. Your instructor can listen to the audio
+        and read the transcript.</p>
+        <p><b>Why we ask you not to say personal details.</b> Anything you say becomes part of that
+        transcript. Keeping the answer to the question keeps everything else out of it. If personal
+        details do slip in, the grader removes what it can recognise before grading and tells your
+        instructor — but the surest fix is not to say them.</p>
+      </details>
+    </section>
+
+    <!-- RECORD -->
+    <section id="recordCard" class="card hidden" tabindex="-1" aria-label="Recording in progress">
+      <div class="statusbar">
+        <span class="rec"><span id="recDot" class="dot" aria-hidden="true"></span> <span id="recState">REC</span></span>
+        <span id="timer" class="timer" aria-hidden="true">—:—</span>
+        <span id="timeAnnounce" class="sr-only" role="status" aria-live="polite"></span>
+      </div>
+      <p id="qProgress" class="qprogress hidden" role="status" aria-live="polite"></p>
+      <p id="banner" class="banner" role="status" aria-live="polite"></p>
+
+      <div id="nonceBox" class="nonce" role="status" aria-live="assertive" aria-atomic="true">
+        <div id="nonceLabel" class="nonce-label">Say this code aloud now:</div>
+        <div id="nonceVal" class="nonce-val">—</div>
+        <span id="nonceSr" class="sr-only"></span>
+        <div id="nonceIdx" class="nonce-idx"></div>
+      </div>
+
+      <div id="qBox" class="qbox hidden">
+        <p id="qMeta" class="qmeta"></p>
+        <p id="qPrompt" class="qprompt" role="region" aria-label="Question" tabindex="-1"></p>
+      </div>
+
+      <button id="stopBtn" class="danger big" disabled>
+        <span aria-hidden="true">■</span> <span id="stopBtnLabel">I&rsquo;m done</span></button>
+      <p id="recHint" class="hint">Speak clearly. Recording auto-stops when the timer ends.</p>
+    </section>
+
+    <!-- REVIEW -->
+    <section id="reviewCard" class="card hidden" tabindex="-1">
+      <h2 id="reviewTitle" tabindex="-1">Review &amp; submit</h2>
+      <p id="certState" class="certstate" role="status" aria-live="polite"></p>
+      <audio id="player" controls playsinline aria-label="Play back your recording"></audio>
+      <!-- The browser's own control cannot show the length until it has decoded the
+           whole file: a live-recorded WebM carries no duration in its header. The
+           recorder clock knows it exactly, so print that and say why they differ. -->
+      <p id="durationNote" class="durnote hidden">
+        Your recording is <b id="durationOut">—</b> long, and all of it is there.
+        The player below may not show the full length until you have listened to
+        the end &mdash; that is the player, not your recording.
+      </p>
+      <button id="downloadBtn" class="primary big" disabled><span aria-hidden="true">⬇︎</span> <span id="downloadBtnLabel">Download &amp; upload to Gradescope</span></button>
+      <p id="backupHelp" class="failmsg hidden"><b>Uncertified backups receive 0 automatically.</b>
+        Upload this only to preserve your recording for instructional-staff review. Make a fresh
+        certified attempt if possible; staff may manually override the 0 after careful review.</p>
+      <button id="retakeBtn" class="ghost big"><span aria-hidden="true">🔁</span> New question / retake</button>
+      <ol class="steps">
+        <li>Tap <b>Download</b> to save the <code>.zip</code>.</li>
+        <li>Open the assignment in <b>Gradescope</b> and upload the <code>.zip</code>.</li>
+        <li>Retake anytime. Gradescope grades your <b>most recent</b> upload — not your best — so if a
+            retake scores lower, re-activate the one you want from <b>Submission History</b>.</li>
+      </ol>
+      <p class="sha">audio fingerprint: <code id="shaOut"></code></p>
+    </section>
+
+    <!-- FAIL / BLOCKED -->
+    <section id="failCard" class="card hidden" tabindex="-1" role="alert">
+      <h2 id="failTitle" tabindex="-1">Something went wrong</h2>
+      <p id="failMsg" class="failmsg"></p>
+      <!-- Diagnostic code. Muted, small, and always present when there is one:
+           a student reporting "it broke" is hard to act on; a student reporting
+           E_NET_CLOSING is a five-second diagnosis. -->
+      <p id="failCode" class="failcode hidden"></p>
+      <button id="retryBtn" class="ghost big">Try again</button>
+    </section>
+
+    <footer>
+      <p>OralScale</p>
+      <!-- Attribution. Deliberately carries NO repository link and NO version string:
+           this page is student-facing, and the internals are not the student's business. -->
+      <p class="credit">Open source under the MIT License. Created by
+        <a href="https://www.davidinouye.com" target="_blank" rel="noopener noreferrer">David I. Inouye</a>.</p>
+    </footer>
+  </main>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

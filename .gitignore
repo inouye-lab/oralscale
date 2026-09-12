@@ -1,0 +1,92 @@
+# Secrets — never commit
+.env
+**/.env
+!.env.example
+server/config.json
+autograder/source/secret.env
+
+# Private course content — ALLOW-LIST, not a block-list.
+# A course folder you create is private BY DEFAULT; it has to be un-ignored
+# deliberately. Course banks contain the questions AND the reference answers,
+# so the failure mode this guards against is publishing an assessment.
+# Check with: git check-ignore -v courses/<courseId>
+courses/*
+!courses/README.md
+!courses/AGENTS.md
+!courses/CLAUDE.md
+!courses/GOVERNANCE.md
+!courses/_template/
+!courses/demo/
+!courses/_shell-for-testsuite/
+!courses/_testsuite/
+
+# Student data — rosters and minted quiz keys pair emails with credentials
+*.keys.csv
+# The Brightspace grade-import file pairs student identifiers with their quiz
+# keys — the same credential the .keys.csv holds, in the shape an LMS accepts.
+*.brightspace-import.csv
+roster*.csv
+roster*.txt
+# LMS exports, whatever they are called. These carry the class roster.
+*export*.csv
+*export*.xlsx
+Grades_*.csv
+Grades_*.xlsx
+# Extended-time accommodation rosters. Keyed by opaque studentRef, so no emails —
+# but this records WHO HAS A DISABILITY ACCOMMODATION, which is the most sensitive
+# thing this system touches. Never commit one.
+accommodations.json
+**/accommodations.json
+drc*.csv
+
+# Build / scratch artifacts
+.demo/
+autograder/autograder.zip
+# Course-bound upload artifacts contain the signing secret and may contain a
+# GenAI key in plaintext. Co-located for clarity, never versioned.
+courses/**/autograders/
+
+# secrets/ no longer exists — a course's Secret lives in courses/<id>/.env, so
+# the whole course travels in one folder. Kept ignored so an old checkout, or an
+# old habit, cannot quietly re-create it and put a Secret back outside its course.
+secrets/
+autograder/source/bank.json
+autograder/source/banks/
+autograder/source/course.json
+autograder/source/calibration.json
+# The bundled local grading model — ~2 GB of GGUF, downloaded at image build time
+# by setup.sh. It is a build artifact, not a source file.
+autograder/source/models/
+server/worker/bundle.json
+autograder/source/__pycache__/
+**/__pycache__/
+*.pyc
+
+# OS / editor
+.DS_Store
+node_modules/
+
+# wrangler local caches (account metadata, deploy state) — not project files
+.wrangler/
+server/worker/.wrangler/
+
+# Downloaded grading models (GBs, fetched by setup.sh at image build time)
+autograder/source/models/
+
+# Local grader eval: real transcripts and the GenAI reference computed over them.
+# A transcript is a student record (INV-PRIV-1); regenerate with --reference.
+tools/eval/local-answers.json
+tools/eval/reference-genai.json
+
+# Model-selection study (v8.5): multi-gigabyte GGUF weights, the llama.cpp
+# binaries used to serve them, and per-run raw grades. All reproducible from
+# tools/eval/model-slate.json; none of it belongs in the repo.
+/.lcpp/
+tools/eval/models/
+tools/eval/study-results/
+
+# Throwaway diagnostic artifacts.
+dist/
+
+# Public-guide rendering evidence (final public assets live in docs/public/site/).
+/tmp/public-guides/

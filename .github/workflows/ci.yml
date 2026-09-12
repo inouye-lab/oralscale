@@ -1,0 +1,173 @@
+name: CI
+
+# The release gate. Runs on every pull request and on every push to main, and
+# again on a release tag. Everything here must pass from a CLEAN CHECKOUT with
+# NO private course content — that is why the suites target courses/demo and
+# courses/_shell-for-testsuite rather than a real course.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests and gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # secret scanning needs history
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create ephemeral test signing config
+        run: node tools/make-config.js
+
+      - name: No private course content in the tree
+        run: |
+          # The engine repo ships demo, _template and _shell-for-testsuite. Anything
+          # else under courses/ means the allow-list in .gitignore has failed
+          # and a question bank is about to be published.
+          unexpected=$(git ls-files courses/ \
+            | grep -vE '^courses/(README\.md|AGENTS\.md|_template/|demo/|_shell-for-testsuite/)' || true)
+          if [ -n "$unexpected" ]; then
+            echo "::error::Private course content is tracked in the engine repository:"
+            echo "$unexpected"
+            exit 1
+          fi
+          echo "OK — only demo, template and fixture course content is tracked."
+
+      - name: Unit tests (includes JS/Python token interoperability)
+        run: npm run test:unit
+        timeout-minutes: 6
+
+      - name: Cloudflare Worker tests
+        run: npm run test:worker
+        timeout-minutes: 4
+
+      - name: End-to-end and attack suite
+        run: npm run test:e2e
+        timeout-minutes: 10
+
+      - name: Autograder package build and test
+        run: npm run test:package
+        timeout-minutes: 6
+
+      - name: Bank validation (demo course)
+        run: npm run test:banks
+        timeout-minutes: 3
+
+      - name: Course smoke test (demo course, full path)
+        run: npm run test:course
+        timeout-minutes: 8
+
+      - name: Archive test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-evidence-${{ github.sha }}
+          path: |
+            .demo/
+            .smoke/
+          retention-days: 30
+          if-no-files-found: ignore
+
+  drift:
+    name: Model and invariant drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Every INV- in the models is referenced in the test model
+        run: |
+          # A hard property without a test is a property that will quietly stop
+          # holding. models/07 is the board that keeps that honest.
+          missing=0
+          for inv in $(grep -ohE 'INV-[A-Z]+-[0-9]+' models/*.md | sort -u); do
+            if ! grep -q "$inv" models/07-test-model.md; then
+              echo "::error::$inv appears in the models but not in models/07-test-model.md"
+              missing=1
+            fi
+          done
+          [ "$missing" -eq 0 ] && echo "OK — every invariant is on the test board."
+          exit $missing
+
+      # Advisory on pull requests and pushes to main: drift is listed as suggested
+      # updates. Blocking only on a release tag, where the review must be acknowledged.
+      - name: Public guides, screenshots, and PDF freshness (INV-DOC-1, advisory)
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        run: npm run test:guides
+
+      - name: Public guides reviewed for release (INV-DOC-1, blocking)
+        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        run: npm run test:guides:release
+
+      - name: Version consistency
+        run: |
+          pkg=$(node -p "require('./package.json').version")
+          cff=$(grep -E '^version:' CITATION.cff | awk '{print $2}')
+          echo "package.json=$pkg  CITATION.cff=$cff"
+          if [ "$pkg" != "$cff" ]; then
+            echo "::error::package.json ($pkg) and CITATION.cff ($cff) disagree on the version"
+            exit 1
+          fi
+          if ! grep -q "\[$pkg\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no entry for $pkg"
+            exit 1
+          fi
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Credentials and student records (strict)
+        run: node tools/check-secrets.js --all
+
+      - name: No course ships with the enrolment gate off
+        run: node tools/check-course-safety.js
+
+      - name: Files that must never be committed
+        run: |
+          # Names first — cheap, and catches the mistakes that actually happen.
+          bad=$(git ls-files | grep -EI '(^|/)\.env$|secret\.env$|\.keys\.csv$|^roster|/roster' \
+            | grep -v '\.example$' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::Files that must never be committed are tracked:"
+            echo "$bad"
+            exit 1
+          fi
+          echo "OK — no secret or roster files tracked."
+
+      # gitleaks-action requires a separate license for organization repos.
+      # The scanner itself is open source, so invoke its pinned official image
+      # directly and keep scanning the complete checked-out git history.
+      - name: gitleaks (open-source CLI)
+        uses: docker://ghcr.io/gitleaks/gitleaks:v8.30.1
+        with:
+          args: git --no-banner --redact /github/workspace

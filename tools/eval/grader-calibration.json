@@ -1,0 +1,92 @@
+{
+  "note": "Calibration set for comparing graders (Purdue GenAI vs a small open-weights model vs the keyword heuristic). Eight questions from the public demo bank (courses/demo/banks/general-stem.json), each with four spoken-style answers at known quality levels. Transcripts are written the way students actually talk — false starts, 'um', no punctuation discipline — because a grader that only works on clean prose is not the grader we ship.",
+  "levels": {
+    "full": 1.0,
+    "partial": 0.65,
+    "weak": 0.3,
+    "wrong": 0.0
+  },
+  "levelNote": "Targets are the INTENDED band, not a claim of precision. The metric that matters is rank agreement (does the grader order these correctly?), not absolute error against these numbers.",
+  "items": [
+    {
+      "questionId": "s-002",
+      "bank": "courses/demo/banks/general-stem.json",
+      "answers": {
+        "full": "So the average rate of change is just how much the output changed divided by how much the input changed over some interval, rise over run. The derivative is what you get when you shrink that interval down toward zero, it's the limit of those average rates. And geometrically that's the slope of the tangent line at that point instead of a secant line through two points. So what it actually measures is how fast the output responds if you nudge the input a tiny bit right there.",
+        "partial": "Um, the derivative is the slope at a point. The average rate of change is over an interval, like change in y over change in x, and the derivative is kind of that but at one point, so you make the interval really small. It's the slope of the tangent line.",
+        "weak": "The derivative tells you the rate of change of a function. You find it with rules like the power rule, so x squared becomes two x. It's used a lot in physics for velocity.",
+        "wrong": "The derivative at a point is the area under the curve up to that point, and the average rate of change is that area divided by the width of the interval. So they're basically the same thing, the derivative is just the total and the average is per unit."
+      }
+    },
+    {
+      "questionId": "s-004",
+      "bank": "courses/demo/banks/general-stem.json",
+      "answers": {
+        "full": "Two events are independent if knowing one happened doesn't change the probability of the other, and formally that means the probability of both is just the product of the two probabilities. For the coin, a fair coin has no memory, the physical flip doesn't know or care what came before, so the five heads don't change anything about the next flip, it's still one half. Thinking it's due for a tails to balance things out is the gambler's fallacy.",
+        "partial": "Independent means one doesn't affect the other. So the coin doesn't remember the last five flips, each flip is separate, so it's still fifty-fifty. People think it's due for tails but it isn't.",
+        "weak": "Independent events are events that are separate. The coin is fifty-fifty because it has two sides. Five heads in a row is unlikely but it can happen.",
+        "wrong": "Independent means the events can't both happen at the same time. And actually after five heads the chance of tails goes up a bit, because over many flips it has to come out even, so the next one is more likely to be tails to balance it."
+      }
+    },
+    {
+      "questionId": "s-005",
+      "bank": "courses/demo/banks/general-stem.json",
+      "answers": {
+        "full": "Correlation just says two things move together, it doesn't say why. There could be a third variable driving both of them, like ice cream sales and drownings both go up in summer because of the heat, not because ice cream causes drowning. Or the direction could be backwards from what you assumed. And if you check enough pairs some will line up by pure coincidence. To actually show causation you need an intervention, like a randomized experiment, or a design that rules those alternatives out.",
+        "partial": "Because there might be something else causing both. Like ice cream sales and drownings are correlated but it's really because it's hot outside. So you can't say one causes the other just from the correlation.",
+        "weak": "Correlation doesn't equal causation. Two things can be related without one causing the other. You always have to be careful with statistics.",
+        "wrong": "If the correlation is strong enough, like above point nine, then it does establish causation, it's only weak correlations that could be random. So the real issue is just having a big enough correlation coefficient and enough data points."
+      }
+    },
+    {
+      "questionId": "s-006",
+      "bank": "courses/demo/banks/general-stem.json",
+      "answers": {
+        "full": "Linear growth adds the same fixed amount every step, exponential multiplies by the same factor every step. So with exponential the increase itself gets bigger as the quantity gets bigger, which is why it has a constant doubling time. And that's why it always wins eventually: the linear process only ever adds a constant, but the exponential one's step size keeps growing, so as long as the multiplier is above one, it passes any linear process no matter how small it starts.",
+        "partial": "Um so linear adds a constant each time and exponential multiplies. So exponential keeps getting faster. Eventually it overtakes because it's growing faster and faster, and the linear one is always the same speed.",
+        "weak": "Exponential growth is really fast growth, like compound interest or a virus spreading. Linear is slower. Exponential curves go up really steeply on a graph.",
+        "wrong": "Exponential growth is when something grows by the same amount each time but starting from a bigger number. It only overtakes linear growth if it starts larger, if it starts smaller the linear process will always stay ahead."
+      }
+    },
+    {
+      "questionId": "s-008",
+      "bank": "courses/demo/banks/general-stem.json",
+      "answers": {
+        "full": "On a log scale equal distances mean equal ratios, so going from one to ten is the same distance as ten to a hundred. That squeezes a range covering many orders of magnitude into something you can actually read, and the small values don't get crushed flat next to the huge ones. It also turns exponential growth into a straight line, which makes it easy to spot, and multiplication becomes addition, which is why slide rules worked.",
+        "partial": "A log scale compresses big ranges, so you can show really small and really large numbers on one graph. Each step is a factor of ten. And exponential stuff looks like a straight line.",
+        "weak": "Log scales are used for things like earthquakes and decibels. They make big numbers smaller so they fit on the graph.",
+        "wrong": "Log scales are useful because they make the data more accurate, taking the log removes the noise from large measurements. That's why you use them when numbers are very big, the error gets smaller on a log scale."
+      }
+    },
+    {
+      "questionId": "s-009",
+      "bank": "courses/demo/banks/general-stem.json",
+      "answers": {
+        "full": "Random error scatters your measurements on both sides of the true value, so if you take a lot of them and average, it shrinks, it cancels out. Systematic error shifts every measurement the same way, like a scale that reads half a kilo heavy, and averaging keeps that offset exactly, you just get a very precise wrong answer. So more data helps random error but for systematic error you need to calibrate or change the method.",
+        "partial": "Random error is just noise and it goes both ways, so averaging more measurements helps. Systematic error is like a bias in the instrument, it's always off in one direction, so more measurements doesn't fix it.",
+        "weak": "Random error is from random things and systematic error is from the system. Taking more measurements makes your answer more accurate.",
+        "wrong": "Systematic error is the error you make by following the procedure wrong, and random error is from the instrument. Taking more measurements fixes systematic error because you'll do the procedure right most of the time, but random error from the instrument stays no matter what."
+      }
+    },
+    {
+      "questionId": "s-011",
+      "bank": "courses/demo/banks/general-stem.json",
+      "answers": {
+        "full": "The problem is who got asked. Everyone who answered a survey on a website is by definition using the internet, so the way the sample was picked is tied directly to the thing being measured. Two thousand responses doesn't help, a big sample only shrinks random error, it just makes a biased estimate more precise. To fix it you need a sampling frame that covers the whole population, like a phone or mail survey of everyone, not more website responses.",
+        "partial": "The people who answered were on the website, so they already use the internet. So of course they said yes. It's a biased sample, and you'd need to survey people who aren't online too.",
+        "weak": "The survey might be biased. Two thousand people might not be enough for the whole country. They should survey more people to be sure.",
+        "wrong": "The flaw is the sample size, two thousand is too small to be reliable for something like internet use, you'd want at least ten thousand. If they got more responses on the website the result would be trustworthy."
+      }
+    },
+    {
+      "questionId": "s-012",
+      "bank": "courses/demo/banks/general-stem.json",
+      "answers": {
+        "full": "Negative feedback takes the deviation and feeds back a correction that opposes it, like a thermostat turning the heat off when it's too warm, so the system gets pushed back toward its setpoint and small disturbances die out. Positive feedback reinforces the deviation instead, so a small push gets bigger, like a microphone squealing near a speaker, and it runs away. In real systems it can't run away forever, it hits some limit, saturation or running out of something.",
+        "partial": "Negative feedback corrects itself, like a thermostat, so it stays stable. Positive feedback makes things bigger and bigger, like the microphone feedback noise, so it runs away.",
+        "weak": "Negative feedback is bad and positive feedback is good, like in a job review. In systems feedback is when the output goes back to the input.",
+        "wrong": "Positive feedback is the stable one because it adds to the signal and keeps it strong, negative feedback subtracts so it makes the system die out and become unstable. That's why amplifiers use positive feedback."
+      }
+    }
+  ]
+}

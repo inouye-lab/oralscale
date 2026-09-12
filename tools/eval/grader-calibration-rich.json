@@ -1,0 +1,117 @@
+{
+  "note": "The PROPOSED bank-schema extension (referenceAnswer / scoringBands / commonErrors), populated for the eight calibration questions (taken verbatim from the demo bank, which already carries them). Used to measure whether a small open-weights grader gets closer to Purdue GenAI when the bank tells it more. If it does, these fields belong in bank/schema.json and in the authoring prompt.",
+  "questions": {
+    "s-002": {
+      "referenceAnswer": "The average rate of change is just rise over run across an interval. The derivative takes that same ratio and shrinks the interval toward zero, and the limit is the instantaneous rate — how fast the output is changing right at that point. Geometrically the secant line through two points becomes the tangent line at one, and the derivative is its slope. Practically it tells you how much the output moves for a very small nudge in the input.",
+      "scoringBands": {
+        "full": "Gives the average rate, the shrinking interval, the limit, and the tangent-slope interpretation.",
+        "strong": "Connects the derivative to a limit of average rates OR to the tangent slope, with the other reading left implicit.",
+        "partial": "Says 'slope of the tangent' or 'rate of change' correctly but does not connect it to a limit of average rates.",
+        "weak": "Only names it as a slope or quotes a rule for differentiating.",
+        "none": "Describes the integral, or an average rate with no limit."
+      },
+      "commonErrors": [
+        "Confusing the derivative with the value of the function",
+        "Describing it as the average rate over an interval with no limiting process"
+      ]
+    },
+    "s-004": {
+      "referenceAnswer": "Two events are independent if knowing one happened tells you nothing about the probability of the other — formally the probability of both is the product of the two probabilities. A coin flip is independent of the flips before it because the coin has no memory: nothing about the physical process changes because of what happened earlier. So five heads in a row does not make tails 'due'. Expecting the sequence to correct itself is the gambler's fallacy.",
+      "scoringBands": {
+        "full": "Defines independence as one event not changing the other's probability, and explains the coin has no memory so past flips do not shift the next.",
+        "strong": "Defines independence correctly and says the coin has no memory, without connecting the two — that independence is exactly why the past flips do not shift the next.",
+        "partial": "Gets the coin-has-no-memory point but does not define independence precisely.",
+        "weak": "Asserts it is still fifty-fifty with no reason.",
+        "none": "Says tails becomes more likely, or confuses independence with mutual exclusivity."
+      },
+      "commonErrors": [
+        "Believing a run of heads makes tails more likely",
+        "Confusing independent with mutually exclusive"
+      ]
+    },
+    "s-005": {
+      "referenceAnswer": "A correlation says two things move together, and that is all it says. There are at least three other explanations. A third variable can drive both — ice cream sales and drowning deaths both rise with summer heat. The direction can be backwards — maybe the outcome causes the supposed cause. And if you test enough pairs, some will correlate by chance. To get to causation you need an intervention, or a design that rules those alternatives out.",
+      "scoringBands": {
+        "full": "Names at least two alternative explanations (common cause, reverse causation, coincidence) and grounds one in a concrete example.",
+        "strong": "Names two alternative explanations but grounds neither in a concrete example, or gives a strong example illustrating only one.",
+        "partial": "Names one alternative with a plausible example.",
+        "weak": "Repeats 'correlation is not causation' with no mechanism.",
+        "none": "Argues that a strong enough correlation does establish causation."
+      },
+      "commonErrors": [
+        "Treating a large correlation coefficient as evidence of causation",
+        "Offering the slogan with no alternative explanation"
+      ]
+    },
+    "s-006": {
+      "referenceAnswer": "Linear growth adds the same amount every step. Exponential growth multiplies by the same factor every step, so the amount added is itself proportional to how much you already have. That is why the doubling time is constant. And it is why exponential eventually wins from any starting point: the linear process adds a fixed amount forever while the exponential one's increments keep growing, so however far behind it starts, the gap closes and then reverses.",
+      "scoringBands": {
+        "full": "Contrasts constant increment with constant multiplier, notes the increment grows with the quantity, and explains why that guarantees eventual overtaking.",
+        "strong": "Contrasts constant increment with constant multiplier and notes the increment grows with the quantity, but does not close the argument for why overtaking is guaranteed.",
+        "partial": "Gets the multiply-versus-add distinction but does not explain the overtaking.",
+        "weak": "Says exponential is 'faster' with no mechanism.",
+        "none": "Describes exponential growth as adding a large fixed amount."
+      },
+      "commonErrors": [
+        "Describing exponential growth as 'very fast linear growth'",
+        "Confusing exponential growth with a steep straight line"
+      ]
+    },
+    "s-008": {
+      "referenceAnswer": "A logarithmic scale turns ratios into equal distances, so a factor of ten covers the same space whether you are going from one to ten or from a million to ten million. That does two useful things. A range spanning many orders of magnitude fits on one axis without the small values being crushed to nothing. And anything growing exponentially becomes a straight line, so the growth rate is just a slope you can read off.",
+      "scoringBands": {
+        "full": "Says equal distances represent equal ratios, notes the compression of range, and gives at least one consequence (small values visible, or exponentials become straight lines).",
+        "strong": "Gives the equal-distances-are-equal-ratios reading and the compression of range, without naming a consequence of it.",
+        "partial": "Says it compresses large ranges without the ratio interpretation.",
+        "weak": "Says logs 'make numbers smaller'.",
+        "none": "Describes a log scale as subtracting a constant, or as a linear rescaling."
+      },
+      "commonErrors": [
+        "Describing a log scale as just dividing by a large number",
+        "Claiming equal distances represent equal differences"
+      ]
+    },
+    "s-009": {
+      "referenceAnswer": "Random error scatters either side of the true value, so if you average many measurements the scatter partly cancels and the average converges. Systematic error pushes every measurement the same way — a scale that reads two grams heavy reads two grams heavy every time. Averaging a thousand of those gives you a very precise answer that is still two grams wrong. So more data fixes random error and does nothing at all for systematic error; that one needs calibration or a different method.",
+      "scoringBands": {
+        "full": "Contrasts unbiased scatter with a consistent offset, explains why averaging shrinks one and preserves the other, and says systematic error needs calibration.",
+        "strong": "Contrasts unbiased scatter with a consistent offset and explains why averaging shrinks the first, without reaching calibration as the remedy for the second.",
+        "partial": "Gets the distinction and that averaging helps random error, without explaining why it fails on systematic error.",
+        "weak": "Names the two kinds with no mechanism.",
+        "none": "Claims more measurements fix both."
+      },
+      "commonErrors": [
+        "Believing a large sample corrects a biased instrument",
+        "Confusing precision with accuracy"
+      ]
+    },
+    "s-011": {
+      "referenceAnswer": "The flaw is the sampling frame, not the size. Everyone surveyed was already on a website, so they all use the internet — the selection is directly related to the thing being measured. Making the sample larger makes that biased estimate more precise, which is worse, not better: you get a tighter interval around the wrong number. Sample size only reduces random error and does nothing to bias. The fix is to sample from the whole population of interest, for instance by an address-based or random-digit method.",
+      "scoringBands": {
+        "full": "Identifies selection bias in the frame, explains that a bigger sample makes a biased estimate more precise rather than less biased, and proposes a frame covering the population.",
+        "strong": "Identifies the selection bias in the frame and proposes a better frame, without the key point that a larger sample makes a biased estimate more precise rather than less biased.",
+        "partial": "Spots the bias but attributes the problem partly to sample size.",
+        "weak": "Says the survey is 'not representative' with no mechanism.",
+        "none": "Accepts the reasoning, or objects only that two thousand is too few."
+      },
+      "commonErrors": [
+        "Believing a larger sample fixes a biased sampling frame",
+        "Confusing a margin of error with the presence of bias"
+      ]
+    },
+    "s-012": {
+      "referenceAnswer": "The difference is the sign of the correction relative to the deviation. Negative feedback feeds back something that opposes the departure, so a system knocked off its setpoint is pushed back toward it and settles — a thermostat is the standard case. Positive feedback feeds back something that reinforces the departure, so a small deviation grows into a bigger one and you get runaway. What stops runaway in practice is not the feedback but some limit — saturation, exhausting a resource, or the system breaking.",
+      "scoringBands": {
+        "full": "Names the sign of the correction as the distinction, explains return-to-setpoint versus growth of deviations, and notes real runaway is bounded by some limit.",
+        "strong": "Names the sign of the correction and explains stability versus growth of deviations, without noting that real runaway is bounded by some limit.",
+        "partial": "Correct on opposing versus reinforcing with stability and runaway, no bounding limit.",
+        "weak": "Gives examples of each with no account of why they behave differently.",
+        "none": "Reverses the two, or equates positive feedback with a good outcome."
+      },
+      "commonErrors": [
+        "Reading 'positive' and 'negative' as good and bad rather than as signs",
+        "Assuming positive feedback always destroys the system, ignoring saturation"
+      ]
+    }
+  }
+}

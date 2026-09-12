@@ -1,0 +1,177 @@
+{
+  "version": 1,
+  "bankId": "ece-fundamentals-2026f",
+  "title": "ECE Fundamentals — Oral Check Bank",
+  "course": "ECE (sample)",
+  "createdWith": "Authored with an LLM, then frozen. AI is not called at quiz time.",
+  "questions": [
+    {
+      "id": "q-rc-transient",
+      "topic": "Circuits",
+      "difficulty": "core",
+      "prompt": "Explain **why** the convolution $y(t)=\\int x(\\tau)h(t-\\tau)\\,d\\tau$ describes an LTI system's output.\n\nCover both:\n- what $h(t)$ *is*, physically\n- why the integral amounts to a `flip and slide`\n\nThe discrete form is $$y[n]=\\sum_{k=-\\infty}^{\\infty} x[k]\\,h[n-k]$$",
+      "rubric": "Reward a correct exponential-charging description, a physical definition of tau = RC, and the ~5-tau settling heuristic. Full credit hits all key points with correct reasoning, not just recall.",
+      "keyPoints": [
+        "Capacitor voltage rises exponentially toward the input level",
+        "Time constant tau = R*C sets the rate",
+        "One tau reaches about 63% of the final value",
+        "Considered settled after roughly 5 time constants",
+        "Current is largest at t=0 and decays to zero"
+      ]
+    },
+    {
+      "id": "q-thevenin",
+      "topic": "Circuits",
+      "difficulty": "core",
+      "prompt": "What is a Thevenin equivalent circuit, and why is it useful? Walk through how you would find the Thevenin voltage and resistance for a linear two-terminal network.",
+      "rubric": "Look for the concept (any linear two-terminal network reduces to one source + one resistor), the open-circuit-voltage method for Vth, and a correct method for Rth (source-off resistance or Voc/Isc).",
+      "keyPoints": [
+        "Any linear two-terminal network reduces to Vth in series with Rth",
+        "Vth is the open-circuit voltage at the terminals",
+        "Rth found by deactivating independent sources and looking in, or Voc/Isc",
+        "Simplifies analysis of a load attached to a complex network",
+        "Enables quick max-power-transfer reasoning"
+      ]
+    },
+    {
+      "id": "q-nyquist-sampling",
+      "topic": "Signals & Systems",
+      "difficulty": "core",
+      "prompt": "State the Nyquist sampling theorem in your own words and explain what aliasing is. Give a concrete everyday example of aliasing and how you would prevent it.",
+      "rubric": "Reward correct statement (sample above twice the highest frequency), a clear explanation of aliasing as high frequencies masquerading as low ones, a real example, and the anti-alias filter fix.",
+      "keyPoints": [
+        "Must sample above twice the highest frequency present",
+        "Aliasing is high frequencies appearing as lower frequencies after sampling",
+        "Example such as wagon-wheel effect or a strobe light",
+        "Prevented with an anti-aliasing low-pass filter before sampling",
+        "Insufficient sampling loses the ability to reconstruct the signal"
+      ]
+    },
+    {
+      "id": "q-convolution",
+      "topic": "Signals & Systems",
+      "difficulty": "stretch",
+      "prompt": "Why is convolution the operation that describes an LTI system's output? Explain the intuition of 'flip and slide' and what the impulse response tells you about a system.",
+      "rubric": "Look for linearity+time-invariance implying superposition of scaled/shifted impulse responses, the flip-and-slide mechanics, and the idea that the impulse response fully characterizes an LTI system.",
+      "keyPoints": [
+        "Any input is a sum of scaled, shifted impulses",
+        "LTI means each impulse produces a scaled, shifted impulse response",
+        "Output is the superposition -> convolution integral/sum",
+        "Flip one signal, slide it, and integrate the overlap",
+        "The impulse response completely characterizes an LTI system"
+      ]
+    },
+    {
+      "id": "q-bjt-vs-mosfet",
+      "topic": "Electronics",
+      "difficulty": "core",
+      "prompt": "Compare a BJT and a MOSFET as amplifying/switching devices. What is the fundamental control mechanism of each, and give one practical reason you might choose one over the other.",
+      "rubric": "Reward current-controlled (BJT, base current) vs voltage-controlled (MOSFET, gate voltage), high input impedance / low static gate current of MOSFET, and a sensible practical tradeoff.",
+      "keyPoints": [
+        "BJT is current-controlled via base current",
+        "MOSFET is voltage-controlled via gate-source voltage",
+        "MOSFET gate draws essentially no static current (high input impedance)",
+        "MOSFETs dominate digital/power switching for low drive power",
+        "BJTs can offer good transconductance/low-noise in some analog roles"
+      ]
+    },
+    {
+      "id": "q-negative-feedback",
+      "topic": "Control",
+      "difficulty": "core",
+      "prompt": "Explain the purpose of negative feedback in an amplifier or control system. What do you trade away to gain it, and what does it buy you?",
+      "rubric": "Look for feedback trading raw gain for stability/linearity/bandwidth/desensitization to parameter variation, and a coherent cause-effect explanation.",
+      "keyPoints": [
+        "Feeds a portion of the output back to oppose the input error",
+        "Trades open-loop gain for improved performance",
+        "Reduces distortion and sensitivity to component variation",
+        "Can increase bandwidth and stabilize the operating point",
+        "Too much delay/phase shift can cause instability"
+      ]
+    },
+    {
+      "id": "q-fourier-why",
+      "topic": "Signals & Systems",
+      "difficulty": "stretch",
+      "prompt": "Why do engineers analyze signals in the frequency domain at all? What does the Fourier transform give you that the time-domain view does not, and name a situation where the frequency view is clearly superior.",
+      "rubric": "Reward decomposition into sinusoids, the fact that LTI systems act simply (multiplication) on sinusoids, and a concrete scenario (filtering, spectrum, resonance).",
+      "keyPoints": [
+        "Decomposes a signal into constituent sinusoids/frequencies",
+        "LTI systems scale/shift each frequency independently -> convolution becomes multiplication",
+        "Reveals bandwidth, tones, and noise structure invisible in time",
+        "Filtering and modulation are naturally described in frequency",
+        "Concrete example such as audio EQ, communications, or vibration analysis"
+      ]
+    },
+    {
+      "id": "q-binary-twos-complement",
+      "topic": "Digital Logic",
+      "difficulty": "intro",
+      "prompt": "Explain two's complement representation for signed integers. Why is it preferred over sign-magnitude, and how do you negate a number in two's complement?",
+      "rubric": "Look for the single representation of zero, that addition/subtraction use the same hardware, and the invert-and-add-one negation rule.",
+      "keyPoints": [
+        "Most significant bit carries negative weight",
+        "Only one representation of zero (unlike sign-magnitude)",
+        "Add/subtract use the same adder hardware",
+        "Negate by inverting all bits and adding one",
+        "Range is asymmetric: one more negative value than positive"
+      ]
+    },
+    {
+      "id": "q-setup-hold",
+      "topic": "Digital Logic",
+      "difficulty": "stretch",
+      "prompt": "What are setup and hold times for a flip-flop, and why do they matter? Explain what a violation causes and how clock frequency relates to setup time.",
+      "rubric": "Reward correct definitions relative to the clock edge, metastability as the consequence, and that setup time bounds the maximum clock frequency.",
+      "keyPoints": [
+        "Setup: data must be stable before the clock edge",
+        "Hold: data must remain stable after the clock edge",
+        "Violation can drive the flop into metastability",
+        "Longest combinational path plus setup limits max clock frequency",
+        "Metastable outputs can settle unpredictably late"
+      ]
+    },
+    {
+      "id": "q-impedance-matching",
+      "topic": "Signals & Systems",
+      "difficulty": "core",
+      "prompt": "What is impedance matching and why does it matter for power transfer or high-speed signaling? Give one example where you want to match and one where you deliberately do not.",
+      "rubric": "Reward max-power-transfer at matched impedance, reflection/signal-integrity motivation for transmission lines, and a sensible counterexample (e.g., voltage measurement wants high input impedance).",
+      "keyPoints": [
+        "Matching source and load impedance maximizes power transfer",
+        "On transmission lines, mismatch causes reflections",
+        "Reflections corrupt high-speed digital or RF signals",
+        "Match when transferring power or driving a line",
+        "Do NOT match when you want to sense voltage without loading (high-Z input)"
+      ]
+    },
+    {
+      "id": "q-kirchhoff",
+      "topic": "Circuits",
+      "difficulty": "intro",
+      "prompt": "State Kirchhoff's current and voltage laws and explain the physical conservation principle each one expresses. Give a one-sentence example of using each.",
+      "rubric": "Look for KCL = charge conservation at a node, KVL = energy conservation around a loop, and correct example usage.",
+      "keyPoints": [
+        "KCL: currents into a node sum to zero (charge conservation)",
+        "KVL: voltages around a closed loop sum to zero (energy conservation)",
+        "KCL used to write node equations",
+        "KVL used to write loop/mesh equations",
+        "Both follow from fundamental conservation laws"
+      ]
+    },
+    {
+      "id": "q-quantization-noise",
+      "topic": "Signals & Systems",
+      "difficulty": "stretch",
+      "prompt": "In an analog-to-digital converter, what is quantization noise and how does the number of bits affect it? Roughly explain the '6 dB per bit' rule of thumb.",
+      "rubric": "Reward rounding error as the noise source, more bits -> smaller step -> lower noise floor, and the ~6 dB SNR improvement per added bit.",
+      "keyPoints": [
+        "Quantization noise comes from rounding to discrete levels",
+        "More bits means smaller step size (LSB)",
+        "Smaller steps lower the quantization noise floor",
+        "Each added bit improves SNR by about 6 dB",
+        "There is a fundamental resolution/noise tradeoff"
+      ]
+    }
+  ]
+}

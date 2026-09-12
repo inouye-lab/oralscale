@@ -1,0 +1,40 @@
+# Review is required on paths where a mistake is expensive and quiet.
+# During the alpha the maintainer owns everything; these entries exist so the
+# sensitive paths stay explicit as contributors are added.
+
+*                                   @inouye-lab
+
+# Cryptographic protocol — token format, signing, verification. The JS and
+# Python sides must stay byte-compatible; drift here is silent.
+/server/lib/protocol.js             @inouye-lab
+/server/signer.js                   @inouye-lab
+/server/worker/                     @inouye-lab
+/autograder/source/protocol.py      @inouye-lab
+
+# Grading correctness and the PII redaction backstop. A false positive in
+# redaction is a grading bug, not harmless caution.
+/autograder/source/grade.py         @inouye-lab
+/autograder/source/pii.py           @inouye-lab
+/autograder/source/transcribe.py    @inouye-lab
+/autograder/source/run_autograder.py @inouye-lab
+
+# Source of truth. Behaviour changes land here first.
+/models/                            @inouye-lab
+
+# The invariant test board and the release gate.
+/tools/test-unit.js                 @inouye-lab
+/tools/demo-e2e.js                  @inouye-lab
+/tools/test-worker.js               @inouye-lab
+/.github/workflows/                 @inouye-lab
+
+# Public commitments about privacy, security, licensing, and attribution.
+/PRIVACY.md                         @inouye-lab
+/SECURITY.md                        @inouye-lab
+/DISCLAIMER.md                      @inouye-lab
+/LICENSE                            @inouye-lab
+/CITATION.cff                       @inouye-lab
+
+# Secrets hygiene and the course-content allow-list. A wrong line here
+# publishes a question bank.
+/.gitignore                         @inouye-lab
+/courses/                           @inouye-lab

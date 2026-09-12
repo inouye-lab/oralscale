@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Gradescope runs this and expects /autograder/results/results.json.
+set -e
+HERE="$(cd "$(dirname "$0")" && pwd)"
+SRC=""
+for d in "$HERE/source" "$HERE"; do
+  if [ -f "$d/probe.py" ]; then SRC="$d"; break; fi
+done
+if [ -z "$SRC" ]; then
+  echo "FATAL: probe.py not found under $HERE or $HERE/source." >&2
+  exit 1
+fi
+python3 "$SRC/probe.py"

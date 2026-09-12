@@ -1,0 +1,181 @@
+{
+  "courseId": "testsuite",
+  "title": "OralScale test-suite fixtures",
+  "note": "NOT A COURSE. The assignments the automated suites drive: a fast one, a one-second deadline, a keyed one, a multi-question one, a browser-check one, and `starter` for the full-path smoke test. Split out of courses/demo so the PUBLIC demo can hold exactly one assignment and never fail assignment routing (INV-DEPLOY-3, decision R15). Never deployed, never shown to anyone; every knob here is chosen to make a test fast or deterministic, not to be a sensible default.",
+  "pseudonymSalt": "31cbfccef1c3f1517b529f5e0f81ecf8",
+  "accessKeyEpoch": 1,
+  "gradingPolicy": {
+    "late": {
+      "mode": "none",
+      "modeNote": "The demo grades everything, whenever it arrives. See courses/_template/course.json for the full set of options and the per-student-extension caveat."
+    }
+  },
+  "assignments": {
+    "demo-oral": {
+      "shortTitle": "Oral Quiz (fixture: oral)",
+      "shortTitleNote": "REQUIRED on every assignment (INV-USE-1). The short, TOPIC-FREE label the app shows above the quiz and the only assignment text stamped into a student's link. It is display only \u2014 nothing routes, grades or selects questions on it. Keep it to the quiz number: the assignment's `title` and its id both name the week's subject, and printing either one puts a hint above the quiz and inside the link. It also has to stay true if the quiz is re-scoped or becomes a review. Matching the Gradescope assignment name is useful but not required. gen-url.js and check-course-safety.js both refuse without it.",
+      "week": "demo",
+      "bank": "../../bank/bank.json",
+      "limitSec": 180,
+      "linkTtlMin": 30,
+      "retakeCooldownSec": 300,
+      "cooldownClearsAfterSec": 5,
+      "codeLeadSec": 2,
+      "scoreBonus": 0
+    },
+    "demo-fast": {
+      "shortTitle": "Oral Quiz (fixture: fast)",
+      "week": "demo",
+      "bank": "../../bank/bank.json",
+      "limitSec": 60,
+      "linkTtlMin": 30,
+      "retakeCooldownSec": 0,
+      "codeLeadSec": 0,
+      "bufferSec": 0
+    },
+    "demo-tiny": {
+      "shortTitle": "Oral Quiz (fixture: tiny)",
+      "week": "demo",
+      "bank": "../../bank/bank.json",
+      "limitSec": 1,
+      "linkTtlMin": 30,
+      "retakeCooldownSec": 0,
+      "codeLeadSec": 0,
+      "bufferSec": 0,
+      "note": "Deadline fixture: limitSec 1 with NO buffer, so the window really does close after a second."
+    },
+    "demo-keyed": {
+      "shortTitle": "Oral Quiz (fixture: keyed)",
+      "week": "demo",
+      "bank": "../../bank/bank.json",
+      "limitSec": 60,
+      "linkTtlMin": 30,
+      "retakeCooldownSec": 0,
+      "codeLeadSec": 0,
+      "requireAccessKey": true,
+      "note": "Access-gate test fixture: /reveal serves nothing without a valid AccessKey.",
+      "bufferSec": 0
+    },
+    "demo-multi": {
+      "shortTitle": "Oral Quiz (fixture: multi)",
+      "week": "demo",
+      "bank": "../../bank/bank.json",
+      "limitSec": 60,
+      "linkTtlMin": 30,
+      "retakeCooldownSec": 0,
+      "codeLeadSec": 0,
+      "questionsPerAttempt": 3,
+      "requireAccessKey": false,
+      "note": "Multi-question test fixture: three questions in one continuous recording.",
+      "bufferSec": 0,
+      "difficultyMix": [
+        "intro",
+        "core",
+        "stretch"
+      ]
+    },
+    "demo-drop": {
+      "shortTitle": "Oral Quiz (fixture: drop)",
+      "week": "demo",
+      "bank": "../../bank/bank.json",
+      "limitSec": 60,
+      "linkTtlMin": 30,
+      "retakeCooldownSec": 0,
+      "codeLeadSec": 0,
+      "questionsPerAttempt": 3,
+      "requireAccessKey": false,
+      "note": "dropLowest fixture. Identical to demo-multi except for the aggregation, so a diff between the two students' outputs is the aggregation and nothing else. Exists because dropLowest changes what the STUDENT is told - the heading names the rule and one question is marked as not counting - and that wording is the part a student can be misled by.",
+      "scoreAggregation": "dropLowest",
+      "bufferSec": 0,
+      "difficultyMix": [
+        "intro",
+        "core",
+        "stretch"
+      ]
+    },
+    "demo-browser": {
+      "shortTitle": "Oral Quiz (fixture: browser)",
+      "week": "demo",
+      "bank": "../../bank/bank.json",
+      "limitSec": 5,
+      "bufferSec": 25,
+      "linkTtlMin": 30,
+      "retakeCooldownSec": 0,
+      "codeLeadSec": 2,
+      "questionsPerAttempt": 2,
+      "requireAccessKey": true,
+      "note": "Browser-check fixture: keyed + multi-question, with a very short limit and a long buffer so the 'finish your sentence' phase can actually be observed by hand."
+    },
+    "starter": {
+      "shortTitle": "Oral Quiz 1",
+      "week": "starter",
+      "bank": "banks/general-stem.json",
+      "title": "Starter — general STEM reasoning",
+      "note": "The out-of-the-box assignment, and the one that behaves like a REAL course: keyed (INV-SEC-8), three questions in one recording, a genuine spread of difficulty. Twelve general STEM questions any discipline can answer, so a new instructor can hear the whole flow before authoring anything. Mint yourself a key with tools/gen-access-keys.js. NOT for real assessment — a real bank has ~100 questions.",
+      "limitSec": 120,
+      "linkTtlMin": 30,
+      "retakeCooldownSec": 0,
+      "questionsPerAttempt": 3,
+      "difficultyMix": [
+        "intro",
+        "core",
+        "stretch"
+      ],
+      "requireAccessKey": true
+    },
+    "fx-demo-bypass": {
+      "shortTitle": "Oral Quiz (fixture: demo bypass)",
+      "week": "fx",
+      "title": "Fixture — identity bypass (INV-DEMO-1)",
+      "note": "Drives U1-U5: the demo identity bypass, exercised HERE rather than against the shipped demo so the public course keeps exactly one assignment. That the DEMO ships with it on is a separate assertion in t_demo_identity_bypass — mechanism and shipping state are different claims and are checked separately on purpose.",
+      "bank": "banks/general-stem.json",
+      "limitSec": 60,
+      "bufferSec": 0,
+      "linkTtlMin": 30,
+      "retakeCooldownSec": 0,
+      "codeLeadSec": 0,
+      "questionsPerAttempt": 3,
+      "difficultyMix": [
+        "intro",
+        "core",
+        "stretch"
+      ],
+      "requireAccessKey": true,
+      "demoSkipIdentityCheck": true,
+      "demoSkipIdentityCheckNote": "Fixture only. courses/_testsuite/ is on the allow-list in tools/check-course-safety.js for the same reason courses/demo/ is: nothing here is assessed and nothing here is ever deployed."
+    }
+  },
+  "defaults": {
+    "retakeCooldownSec": 300,
+    "cooldownClearsAfterSec": 2,
+    "codeLeadSec": null,
+    "codeLeadSecNote": "ADVANCED. Seconds a boundary code is shown before the question appears. null = DERIVED as 1 second per code digit (6 digits -> 6 s), which is how long reading them aloud actually takes. Set a number only to override.",
+    "tailLimitSec": null,
+    "tailLimitSecNote": "ADVANCED. Seconds allowed between the FINAL code appearing and Finish. null = DERIVED as 2 seconds per code digit (6 digits -> 12 s) - double, because nothing follows the last code to absorb a fumble. Set a number only to override.",
+    "questionsPerAttempt": 1,
+    "requireAccessKey": false,
+    "requireAccessKeyNote": "The DEMO course runs OPEN so the local walkthrough needs no key handout. Real courses must leave this true (the code default): without it anyone can invent a studentRef and mine the bank (INV-SEC-8).",
+    "bufferSec": 20,
+    "codeDigits": 4,
+    "codeDigitsNote": "Digits a student reads aloud at each boundary. Range 4-8; DEFAULT 4, reduced from 6 because every digit is one more thing a nervous person has to read correctly. The floor of 4 is not arbitrary: the matcher tolerates one transcription slip, which at 3 digits means any TWO of the three digits in order are accepted, and a code the student never said then matches innocent numbers in their answer about a quarter of the time. The time allowed to read a code is DERIVED from this (1 s per digit, doubled at the final code), so lowering it shortens the attempt too.",
+    "maxPoints": 10,
+    "maxPointsNote": "Gradescope points for the assignment. Overrides the ORALSCALE_MAX_POINTS env var.",
+    "scoreAggregation": "mean",
+    "scoreAggregationNote": "How several questions combine: 'mean', 'min' (the weakest answer decides - for competencies that must each be demonstrated), or 'dropLowest' (scores the best N-1 of N; the dropped question's feedback is still shown, marked as not counting).",
+    "showTranscript": true,
+    "showTranscriptNote": "Whether the student sees the automatic transcript of their own recording.",
+    "allowPrivateCode": true,
+    "allowPrivateCodeNote": "Offer the 'private code' email opt-out. Only relevant when requireAccessKey is false - key mode already sends no email.",
+    "difficultyMixNote": "Optional per-slot difficulty, e.g. [\"intro\",\"core\",\"stretch\"] for a warm-up/core/stretch trio. Null or absent draws every question from the whole bank; a difficulty absent from the bank falls back to the whole bank rather than failing the attempt.",
+    "gradingBackend": "local",
+    "gradingBackendNote": "Which grader scores the answers. 'local' (the default) runs a small open-weights model INSIDE the Gradescope container, so the transcript never leaves it. 'genai' sends the de-identified, PII-redacted transcript to Purdue GenAI Studio, which grades better - but GenAI Studio carries no FERPA certification, so choosing it is the instructor's decision, not ours. 'heuristic' is keyword coverage only: deterministic, needs nothing, and grades markedly worse - choose it deliberately or not at all. THERE ARE NO FALLBACKS (INV-GRADE-1): the grader you name here is the one used, and if it cannot run, the affected submissions are NOT graded and are flagged for you to regrade. Two students who said the same thing must not be measured by different methods because one of them submitted during an outage.",
+    "gradingQualityNote": "GRADING QUALITY. The local grader is qwen2.5-3b and there is no model choice: eleven alternatives from 1.5B to 9B were measured against it (Qwen2.5/3/3.5, Gemma 3/4, Phi-4-mini, Llama 3.2, Ministral) and none won — bigger models grade WORSE here because they are generous, which shows up as ties. It needs 2.07 GB peak in the container, 66% headroom, and its memory does NOT grow with questionsPerAttempt. IF YOU WANT BETTER GRADING, the choice is the BACKEND, not the model: Purdue GenAI (qwen3.6:27b) marks NOTICEABLY BETTER than the local model on every metric measured. The cost is locality — the de-identified, PII-redacted transcript leaves the Gradescope container to a service with no FERPA certification, which is why 'local' is the default. Set gradingBackend='genai' to accept that trade. See docs/reference/GRADER-BACKENDS.md.",
+    "scoreBonus": 0,
+    "scoreBonusNote": "POINTS added to every submission. Normally 0. Set it PER ASSIGNMENT (not here) when something went wrong on your side - a bad question, a grader changed mid-term, an outage - and the fair remedy is to give the whole cohort a mark back rather than re-grade by hand. Uniform by design: a remedy that lands differently on different students re-creates the unfairness it is meant to repair. Capped at maxPoints unless scoreBonusAllowOverMax is true. Students are TOLD an adjustment was applied.",
+    "scoreBonusReason": "",
+    "scoreBonusReasonNote": "Why the bonus was given. Shown to students and recorded in the instructor output. A bonus with no recorded reason is indefensible six weeks later.",
+    "scoreBonusAllowOverMax": false,
+    "supportChannel": "Piazza",
+    "supportChannelNote": "Where a student is told to ask for help when something fails on OUR side — named in the message they see if a submission could not be graded. Use whatever your course actually reads."
+  }
+}

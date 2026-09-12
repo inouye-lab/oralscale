@@ -1,0 +1,9 @@
+# Generated Gradescope autograder zips contain plaintext course secrets.
+autograders/
+dist/
+
+.env
+.env.*
+*.keys.csv
+*.brightspace-import.csv
+accommodations.json

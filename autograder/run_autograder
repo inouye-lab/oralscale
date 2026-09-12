@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Gradescope invokes this as /autograder/run_autograder and expects
+# /autograder/results/results.json to be written.
+#
+# LAYOUT: Gradescope extracts the uploaded zip INTO /autograder/source/, so the
+# python files land at /autograder/source/*.py — not in a nested source/source/.
+# Locate them rather than assuming, so this works both in the container and in a
+# flat local unzip.
+set -e
+HERE="$(cd "$(dirname "$0")" && pwd)"
+
+SRC=""
+for d in "$HERE/source" "$HERE"; do
+  if [ -f "$d/run_autograder.py" ]; then SRC="$d"; break; fi
+done
+if [ -z "$SRC" ]; then
+  echo "FATAL: run_autograder.py not found under $HERE or $HERE/source." >&2
+  echo "The autograder zip is laid out wrongly — rebuild with: npm run package -- <course.json> --zip" >&2
+  exit 1
+fi
+
+# Load the signing secret + GenAI credentials baked in at build time.
+if [ -f "$SRC/secret.env" ]; then
+  # shellcheck disable=SC1091
+  set -a; . "$SRC/secret.env"; set +a
+fi
+
+python3 "$SRC/run_autograder.py"

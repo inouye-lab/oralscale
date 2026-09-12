@@ -1,0 +1,12 @@
+# OralScale — generated, secret, and NEVER committed.
+# Written by tools/lib/course-guards.js. Safe to extend, not to remove.
+.env
+.env.*
+*.keys.csv
+*.brightspace-import.csv
+accommodations.json
+extensions.json
+autograders/
+dist/
+
+!.env.example

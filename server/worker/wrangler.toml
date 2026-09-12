@@ -1,0 +1,51 @@
+name = "oralscale-signer"
+main = "signer-worker.js"
+compatibility_date = "2026-01-01"
+
+# Serve the Worker at <name>.<your-subdomain>.workers.dev. Stated explicitly so a
+# deploy can never quietly leave the Worker with "No active routes".
+#
+# ⚠️ Your workers.dev SUBDOMAIN becomes part of the Signer URL, and that URL is
+# baked into every student link (signed, see tools/gen-url.js --signer). Pick it
+# BEFORE handing links out: changing it later silently breaks every link already
+# distributed, and they last `--days` (default 120).
+workers_dev = true
+
+# Preview URLs publish EVERY deployed version at its own public hostname, each with
+# the same signing secret and D1 binding. The Signer's whole job is to be the single
+# authority on signing, so extra public copies are surface with no upside here.
+preview_urls = false
+
+[vars]
+ALLOW_ORIGIN = "*"        # set to your Pages origin in production, not "*"
+GRACE_SEC = "20"          # clock-skew allowance on the attempt deadline
+TAIL_LIMIT_SEC = "45"     # seconds allowed between the closing code and /finish
+
+# ---------------------------------------------------------------------------
+# D1 — REQUIRED if retakeCooldownSec is non-zero (INV-SEC-7).
+#
+# The Worker keeps no memory of its own, so without this binding the retake
+# cooldown SILENTLY does nothing and students can reroll questions freely.
+# `GET /health` reports "cooldownEnforced": false when that is the case.
+#
+# It also backs the sliding-window rate limiter (INV-SEC-5). Neither is
+# integrity-critical: certificates, liveness codes and identity checks are pure
+# crypto and keep working if D1 is lost.
+#
+# Create it once, then paste the printed id below and uncomment:
+#   npx wrangler d1 create oralscale
+#   npx wrangler d1 execute oralscale --remote --file schema.sql
+# ---------------------------------------------------------------------------
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "oralscale"
+# database_id = "PASTE-ID-HERE"
+
+# Signing secret is set out-of-band and never appears in this file:
+#   npx wrangler secret put ORALSCALE_SECRET
+# The SAME secret must go into the autograder's source/secret.env.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "oralscale"
+database_id = "7edb9b23-cb8d-4a86-8285-f0c9eab5c63c"

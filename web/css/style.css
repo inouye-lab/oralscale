@@ -1,0 +1,209 @@
+:root {
+  --bg: #0f1220;
+  --card: #191d2e;
+  --card2: #212642;
+  --ink: #eef1f7;
+  --muted: #9aa3bd;
+  --accent: #6ea8fe;
+  --accent2: #7ee0c2;
+  --danger: #ff6b6b;
+  --ok: #4ade80;
+  --warn: #ffcf5c;
+  --err: #ff8080;
+  --line: #2a3050;
+  --radius: 16px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { overflow-x: hidden; }
+body {
+  margin: 0;
+  font: 17px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: radial-gradient(1200px 600px at 50% -10%, #1b2140 0%, var(--bg) 55%);
+  color: var(--ink);
+  min-height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.wrap { max-width: 560px; margin: 0 auto; padding: 20px 16px 48px; }
+header h1 { margin: 0; font-size: 26px; letter-spacing: -0.5px; }
+header .tag { margin: 4px 0 14px; color: var(--muted); font-size: 14px; }
+
+/* WHICH QUIZ (INV-USE-1). Quiet, not decorative: it has to be legible at a
+   glance without competing with the question itself, and it sits above every
+   card so it is still on screen while recording. */
+.quizwhich {
+  margin: 0 0 18px; padding: 10px 14px;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 12px; font-size: 14px; line-height: 1.45;
+}
+.quizwhich .qw-label { color: var(--muted); font-size: 12px;
+  text-transform: uppercase; letter-spacing: .6px; display: block; }
+.quizwhich .qw-title { display: block; font-size: 17px; margin: 2px 0 2px; }
+.quizwhich .qw-ids { display: block; color: var(--muted); font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-word; }
+.quizwhich .qw-hint { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; }
+
+.card {
+  background: linear-gradient(180deg, var(--card) 0%, #171b2b 100%);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 20px; margin-bottom: 16px; box-shadow: 0 10px 40px rgba(0,0,0,.25);
+}
+.card h2 { margin: 0 0 12px; font-size: 20px; }
+.who { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+.who b { color: var(--ink); }
+
+.prep { list-style: none; padding: 0; margin: 0 0 20px; }
+.prep li { padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 15.5px; }
+.prep li:last-child { border-bottom: 0; }
+
+button {
+  appearance: none; border: 0; border-radius: 12px; padding: 15px 20px;
+  font: inherit; font-weight: 700; cursor: pointer; color: #0b0e18;
+}
+button.big { width: 100%; font-size: 17px; margin-top: 6px; min-height: 52px; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primary { background: var(--accent); }
+button.danger { background: var(--danger); color: #fff; }
+button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+
+/* Standing advice the student should read before speaking, not a warning about
+   something going wrong -- so it is quiet and inline, not an alert colour. */
+.notice { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+  margin: 0 0 16px; font-size: 14.5px; line-height: 1.45; }
+
+.how { margin-top: 16px; color: var(--muted); font-size: 14px; }
+.how summary { cursor: pointer; }
+.how p { margin: 10px 0 0; }
+
+.statusbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.rec { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; color: var(--muted); letter-spacing: 1px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; background: #3a4266; }
+.dot.live { background: var(--danger); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+.timer { font-variant-numeric: tabular-nums; font-size: 34px; font-weight: 800; letter-spacing: 1px; }
+.timer.warn { color: var(--warn); }
+.timer.crit { color: var(--danger); }
+.banner { color: var(--muted); font-size: 14px; min-height: 20px; margin: 0 0 8px; }
+/* "Question 2 of 3" — only rendered when an attempt carries several questions. */
+.qprogress { color: var(--accent); font-size: 13px; font-weight: 600; letter-spacing: .4px;
+  margin: 0 0 6px; }
+
+.nonce { background: var(--card2); border: 2px dashed var(--accent2); border-radius: 14px; padding: 16px; margin-bottom: 16px; text-align: center; }
+.nonce-label { color: var(--muted); font-size: 13px; }
+.nonce-val { font-family: ui-monospace, Menlo, monospace; font-size: clamp(26px, 8vw, 40px); font-weight: 800; letter-spacing: 2px; color: var(--accent2); margin: 6px 0 2px; word-break: break-word; }
+.nonce-idx { color: var(--muted); font-size: 12px; }
+.nonce.flash { animation: flash .7s ease; }
+@keyframes flash { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(126,224,194,.6); } 30% { transform: scale(1.03); box-shadow: 0 0 0 10px rgba(126,224,194,0); } 100% { transform: scale(1); } }
+
+.qbox { background: #0e1120; border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.qmeta { color: var(--accent); font-size: 12px; text-transform: uppercase; letter-spacing: .6px; margin: 0 0 6px; }
+
+/* Rich question prompts: a small Markdown subset + MathML (see web/js/richtext.mjs).
+   Everything here is layout only — the safety lives in the renderer. */
+.qprompt p { margin: 0 0 .6em; }
+.qprompt p:last-child { margin-bottom: 0; }
+.qprompt ul, .qprompt ol { margin: .4em 0 .6em; padding-left: 1.4em; }
+.qprompt li { margin: .2em 0; }
+.qprompt code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em;
+  background: rgba(255, 255, 255, .07); padding: .1em .35em; border-radius: 4px; }
+.qprompt pre { margin: .5em 0; padding: .6em .7em; border-radius: 8px; overflow-x: auto;
+  background: rgba(255, 255, 255, .06); }
+.qprompt pre code { background: none; padding: 0; }
+.qprompt math { font-size: 1.05em; }
+/* Display math on a phone can be wider than the card; let it scroll rather than
+   pushing the page sideways (INV-PLAT-2). */
+.qprompt math[display="block"] { display: block; margin: .5em 0; overflow-x: auto; max-width: 100%; }
+/* Browsers without MathML show the LaTeX source instead — legible, not silent. */
+.qprompt .math-raw { color: var(--accent); white-space: pre-wrap; }
+.qprompt { font-size: 18px; line-height: 1.45; margin: 0; }
+.hint { color: var(--muted); font-size: 13px; text-align: center; margin: 10px 0 0; }
+
+.certstate { font-weight: 700; margin: 4px 0 12px; }
+.certstate.ok { color: var(--ok); }
+.certstate.err { color: var(--err); }
+audio { width: 100%; margin: 4px 0 14px; }
+.steps { color: var(--muted); font-size: 14px; margin: 14px 0 0; padding-left: 20px; }
+.steps code, .sha code { color: var(--ink); }
+/* Quiet: it is reassurance, not an alert. It sits between the certificate line
+   and the player, which is exactly where the doubt appears. */
+.durnote { margin: 8px 0 4px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.durnote b { color: var(--ink); }
+
+.sha { color: var(--muted); font-size: 11px; word-break: break-all; margin-top: 12px; }
+.failmsg { color: var(--muted); }
+
+footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 20px; }
+/* Attribution line: present and legible, but quieter than anything the student
+   has to act on. It should never compete with the Download button. */
+footer .credit { margin: 6px 0 0; font-size: 11px; opacity: 0.75; }
+footer .credit a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+footer .credit a:hover, footer .credit a:focus-visible { color: var(--ink); }
+.hidden { display: none !important; }
+
+/* screen-reader-only live regions (INV-PLAT-4) */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* visible keyboard focus (INV-PLAT-4) */
+:focus-visible { outline: 3px solid #7aa2ff; outline-offset: 2px; }
+[tabindex="-1"]:focus { outline: none; }
+@media (prefers-reduced-motion: reduce) {
+  .dot.live, .nonce.flash { animation: none !important; }
+}
+
+/* ---- identity step (v3): student self-identifies; email never leaves the tab ---- */
+.fieldlabel { display:block; font-weight:600; margin:.9rem 0 .35rem; }
+.field {
+  width:100%; box-sizing:border-box; font-size:1.05rem; padding:.8rem .9rem;
+  min-height:44px; border-radius:10px; border:1px solid #4a4f6a;
+  background:#171a2b; color:inherit;
+}
+.field:focus-visible { outline:3px solid #7aa2ff; outline-offset:2px; }
+.fieldhelp { font-size:.9rem; opacity:.8; margin:.5rem 0 1rem; }
+.fieldErr { color:#ff9a9a; font-weight:600; min-height:1.2em; margin:.6rem 0 0; }
+.linkish {
+  display:block; width:100%; min-height:44px; margin-top:.6rem;
+  background:none; border:none; color:#9ab6ff; font:inherit;
+  text-decoration:underline; cursor:pointer; padding:.5rem;
+}
+.linkish.inline { display:inline; width:auto; min-height:0; padding:0; }
+.linkish:focus-visible { outline:3px solid #7aa2ff; outline-offset:2px; border-radius:6px; }
+
+/* Extended-time accommodation (INV-ACCOM-1).
+   Deliberately quiet: collapsed behind a link, sitting below the prep list and
+   above the start button. Most students have no accommodation, and a disability
+   question presented at full volume to everyone is both noise and a nudge. */
+.accom { margin: 14px 0 4px; }
+.accompanel {
+  margin-top: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.accompanel .field { width: 100%; margin-bottom: 8px; }
+.accompanel .fieldhelp { margin: 0; }
+
+/* Diagnostic error code on the failure card. Quiet enough that it does not
+   alarm a student, present enough that they can read it out or screenshot it. */
+.failcode {
+  margin: 10px 0 14px; font-size: 12px; color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  word-break: break-word;
+}
+
+/* Credential fields (quiz key, private code) ------------------------------
+   Masked by default with a reveal button sitting inside the field. The input
+   keeps padding on the right so long keys never slide under the button. */
+.pwwrap { position: relative; display: block; }
+.field-pw { padding-right: 46px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.06em; }
+.pwtoggle {
+  position: absolute; top: 50%; right: 4px; transform: translateY(-50%);
+  width: 38px; min-height: 38px;              /* a real touch target, not a glyph */
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 0; padding: 0; cursor: pointer;
+  color: var(--muted); font-size: 17px; line-height: 1; border-radius: 8px;
+}
+.pwtoggle:hover { color: var(--ink); }
+.pwtoggle:focus-visible { outline: 2px solid var(--accent, #6ea8fe); outline-offset: 2px; color: var(--ink); }
+.pwtoggle[aria-pressed="true"] { color: var(--ink); }
+/* The "ends in ABCD" line: quiet, and reserves no space when empty. */
+.fieldhint {
+  margin: 6px 0 0; font-size: 12px; color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
