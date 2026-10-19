@@ -186,12 +186,12 @@ function preflight() {
   say(`  ${B('A) A small AI model running inside Gradescope')} ${DIM('(recommended, the default)')}`);
   say('     The transcript never leaves the Gradescope container. Nothing is sent');
   say('     anywhere, no account and no API key needed, and it keeps working if a');
-  say('     service is down. It grades a little less well than the larger model in (B):');
-  say('     it orders answers about as reliably but is less precise about the exact');
-  say('     mark, which the calibration step corrects.');
+  say('     service is down. The default is Qwen3.5 4B with thinking disabled.');
+  say('     Validate the answer key and local grading on synthetic examples for');
+  say('     your course; see docs/reference/LOCAL-GRADING.md.');
   say();
   say(`  ${B('B) Purdue GenAI Studio')} ${DIM('(needs an API key)')}`);
-  say('     Grades noticeably better. The de-identified, PII-redacted TEXT of an');
+  say('     Uses the institution-selected remote model. The de-identified TEXT of an');
   say('     answer is sent there for grading — never the audio, never a name.');
   say();
   say(WARN('     Read this before choosing (B): Purdue GenAI Studio is on-premises at'));
@@ -232,6 +232,16 @@ function preflight() {
     defaults: {
       questionsPerAttempt: nQ,
       gradingBackend,
+      localModel: 'qwen3.5-4b',
+      scoring: {
+        mode: 'points', requiredWeight: 2, optionalWeight: 1, novelWeight: 1, novelCap: 3,
+        partlyFactor: 0.5, curveRounding: 'up',
+        table: [0, 0.70, 0.85, 0.90, 0.92, 0.95, 0.97, 1.00],
+        falseClaimCapScore: 0.85, noCoreCapScore: 0.70,
+      },
+      scoringNote: 'RECOMMENDED points curve (INV-GRADE-10): required points 2, optional and novel 1, partly half; the total is read off `table`, so one required point alone is 0.85 and two are 0.92. Write banks for it (courses/_template/question-design.md). Never switch a released assignment (INV-DEPLOY-6).',
+      feedbackFooter: 'A good and correct answer will generally earn about 90%. To get more points, you have to go beyond what the question explicitly asks.',
+      feedbackFooterNote: 'Appended to every question\'s feedback (INV-USE-7). Never changes a mark. null shows nothing.',
       gradingBackendNote: "Which grader scores the answers. 'local' (the default) runs a small open-weights model INSIDE the Gradescope container, so the transcript never leaves it. 'genai' sends the de-identified, PII-redacted transcript to Purdue GenAI Studio, which grades better - but GenAI Studio carries no FERPA certification, so choosing it is the instructor's decision, not ours. 'heuristic' is keyword coverage only: deterministic, needs nothing, and grades markedly worse - choose it deliberately or not at all. THERE ARE NO FALLBACKS (INV-GRADE-1): the grader you name here is the one used, and if it cannot run, the affected submissions are NOT graded and are flagged for you to regrade. Two students who said the same thing must not be measured by different methods because one of them submitted during an outage.",
       limitSec,
       limitSecNote: 'Answer time per QUESTION — the countdown the student sees.',

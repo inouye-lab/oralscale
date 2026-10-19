@@ -25,4 +25,12 @@ if [ -f "$SRC/secret.env" ]; then
   set -a; . "$SRC/secret.env"; set +a
 fi
 
-python3 "$SRC/run_autograder.py"
+PYTHON=python3
+if [ -x "$SRC/.venv/bin/python" ]; then PYTHON="$SRC/.venv/bin/python"; fi
+echo "[oralscale launcher] $(TZ=America/Indiana/Indianapolis date '+%Y-%m-%d %I:%M:%S %p %Z') START"
+set +e
+"$PYTHON" -u "$SRC/run_autograder.py"
+grader_status=$?
+set -e
+echo "[oralscale launcher] $(TZ=America/Indiana/Indianapolis date '+%Y-%m-%d %I:%M:%S %p %Z') EXIT status=$grader_status"
+exit "$grader_status"

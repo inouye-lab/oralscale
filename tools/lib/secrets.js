@@ -64,6 +64,14 @@ function allCourses(coursesDir = COURSES) {
   const out = [];
   const walk = (dir) => {
     if (!fs.existsSync(dir)) return;
+    const coursePath = path.join(dir, 'course.json');
+    if (fs.existsSync(coursePath)) {
+      try {
+        const id = JSON.parse(fs.readFileSync(coursePath, 'utf8')).courseId;
+        if (id) out.push({courseId:id, dir, coursePath});
+      } catch { /* validated elsewhere */ }
+      return; // A course owns its snapshots and generated packages; they are not courses.
+    }
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, e.name);
       if (e.isDirectory()) { walk(full); continue; }

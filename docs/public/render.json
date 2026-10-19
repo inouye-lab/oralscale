@@ -1,24 +1,24 @@
 {
   "inputs": {
-    "docs/public/content.json": "59d4bac2dbf1913dd5c30062a487cfc447e6bf804961843ace23df261cd11c58",
+    "docs/public/content.json": "0ffe2e50474b24c2f0af6842cc502afb758383dad3a98c06937494c96f9b4c87",
     "docs/public/external-sources.json": "050547cfe30e98b944d443936741f5fe222842bd4b23c8b53dafc433c2dbf412",
     "tools/public-guides/build.cjs": "e75de25103acf3089573746926bcfcd32aa87858417da9334e763843b5275054",
     "tools/public-guides/render.cjs": "fc1e5fc1538a5fd0590b45a3545d2a8f6098b324ee8ef66954518d04ae06e9d6",
     "tools/public-guides/evidence.cjs": "a9eb8227ead21d2582ae12f410f635ac7203e4389cbb4190283d88aa3ea85855",
-    "docs/public/site/index.html": "8bfdf0fa081596baea2cabff5399377eba8c3fa97f77c42860b8e337fc1d5bc0",
-    "docs/public/site/student.html": "4f5d1278422c114a977b2cbf4591eedd8832a88c1645c76fad0eabd680439263",
-    "docs/public/site/faculty.html": "89ea15aee56eb06a71ab81e7d4c65340f235afd6629f23d228799ec0bed92be8",
+    "docs/public/site/index.html": "604a991fec18c1918ace39c37f4c99d33f0ec4556334702d596230eca87ad187",
+    "docs/public/site/student.html": "4d966519d47c364eb4b36f1a7e48c70468300bd4f11f60d887dfec6a7fe9b6bf",
+    "docs/public/site/faculty.html": "da1eb6d8af4a46db9c0aa53cee62bae2275db6627b81c9e54e0ae27f96d880e3",
     "docs/public/site/guide.css": "1e79f7556b2a27c6eca3bfd43675e99866141701d6d9543466cb63693140ca5a",
     "docs/public/site/assets/favicon.svg": "302a3fe6826444bbc8a75862c5bf2f8166b7f6884281b04acb4250494d5f232e",
     "docs/public/site/assets/quiz-key.png": "f6af3550ee479b7400d145be0f5deb2c169d5ebe847ce572a031f5dd8fc0a84d",
-    "docs/public/site/assets/say-code.png": "2ab2302fb4ed4fe7ef92b54daae41f958d16e014b015a499adc742539f62d9ee",
-    "docs/public/site/assets/answer.png": "73eaab2f90f144449a6969ac9f80054ab740dd3df575883715104dd3a777cc07",
-    "docs/public/site/assets/app-overview.png": "20f18095e09a884e536a3f3b88e66146292b0993083e1bb91270405c82b963be",
-    "docs/public/site/assets/download.png": "949e0a65cbb7aeeca32327177df4da69f617fbefaaa964b6fe067afdbf5989ee"
+    "docs/public/site/assets/say-code.png": "98c39f17763fa4fbe4bab889f15011728a7b91228f05eddb975d2e46b7dc167e",
+    "docs/public/site/assets/answer.png": "3149b4fa944d7c2e59001752ad31a07f187ef767986ddf442e9f750a2451be96",
+    "docs/public/site/assets/app-overview.png": "983a66029de65eaa4320e3f73a3d4f92536a359b9995ffffdb0e60e8ad897a1b",
+    "docs/public/site/assets/download.png": "2e435c7757560ffba53e928005d063a82911bbe08bb2c63413e93675e7fe7521"
   },
   "outputs": {
-    "docs/public/site/student-guide.pdf": "21a52ac2680e8f6537673d42cae1b2f54509559641a09c2ff3dd4ffcdfcff466",
-    "docs/public/site/faculty-guide.pdf": "3dd7123b64b9970d4f7b5aef4ee22db033317c33db6717d15a6651edb87df46b"
+    "docs/public/site/student-guide.pdf": "68aa2b5da01ae11aa6dd10aba24908a7c390d20966b2fb26f2fe34d68a441c66",
+    "docs/public/site/faculty-guide.pdf": "71f5cd7a367eb12fea709c0b438028c01e9cfeaeebe16fb8850f0ea31f9fd506"
   },
   "pdfs": {
     "docs/public/site/student-guide.pdf": {

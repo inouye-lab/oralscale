@@ -73,6 +73,12 @@ const SYMBOLS = {
   infty: '∞', partial: '∂', nabla: '∇', ldots: '…', dots: '…', cdots: '⋯', vdots: '⋮',
   perp: '⊥', parallel: '∥', angle: '∠', degree: '°', circ: '∘', oplus: '⊕', otimes: '⊗',
   land: '∧', lor: '∨', neg: '¬', therefore: '∴', because: '∵', sqrt_: '√',
+  // Norm bars and the pseudoinverse dagger. Without these a linear-algebra
+  // prompt cannot write the two things it most needs to write — the norm
+  // ‖x‖ and the Moore–Penrose inverse A† — and an author who reaches for the
+  // standard macro gets the macro name printed on the student's phone.
+  dagger: '†', Vert: '‖', lVert: '‖', rVert: '‖', vert: '|', lvert: '|', rvert: '|',
+  '|': '‖',
 };
 const BIG_OPS = { sum: '∑', prod: '∏', coprod: '∐', int: '∫', iint: '∬', oint: '∮',
   bigcup: '⋃', bigcap: '⋂', lim: 'lim', max: 'max', min: 'min', argmax: 'arg max',
@@ -158,6 +164,24 @@ function braceGroup(tokens, state) {
     return inner.length === 1 ? inner[0] : mrow(inner);
   }
   if (!tok) return mrow([]);
+  /* A BRACELESS ARGUMENT IS ONE TOKEN, AND A DIGIT IS A TOKEN.
+   *
+   * In TeX, `\frac12` means `\frac{1}{2}`: each argument takes a single token,
+   * and digits tokenize individually. Our lexer groups a run of digits into one
+   * number for everything else's benefit, so without this the numerator becomes
+   * `12` and the DENOMINATOR becomes whatever came next — silently eating it.
+   *
+   *   $\mathrm{diag}(3,\tfrac12)$  ->  diag(3, [12 over ")"]
+   *
+   * with the closing bracket gone and nothing to show anything went wrong: no
+   * unknown macro, no raw-source fallback, just a wrong equation on a student's
+   * phone. Found in a live bank (quiz-03 q3-029 and q3-060, 2026-09-16). So take
+   * the first digit and leave the remainder in place to be read next.
+   */
+  if (tok.k === 'num' && tok.v.length > 1) {
+    tokens[state.i] = { k: 'num', v: tok.v.slice(1) };
+    return mn(tok.v[0]);
+  }
   state.i++;
   if (tok.k === 'num') return mn(tok.v);
   if (tok.k === 'let') return mi(tok.v);
@@ -226,7 +250,8 @@ function texCommand(name, tokens, state) {
       const raw = flattenText(g);
       return mi(BB[raw] || raw);
     }
-    case 'mathrm': case 'mathbf': case 'mathcal': case 'mathit': case 'boldsymbol': {
+    case 'mathrm': case 'mathbf': case 'mathcal': case 'mathit': case 'boldsymbol':
+    case 'operatorname': {
       const g = braceGroup(tokens, state);
       return mi(flattenText(g));
     }

@@ -239,6 +239,7 @@ Access, grading and privacy:
 | `maxPoints` | 10 | Gradescope points. Overrides `ORALSCALE_MAX_POINTS` |
 | `scoreAggregation` | `mean` | How questions combine: `mean`, `min` (the weakest answer decides — for competencies that must each be demonstrated), or `dropLowest` (forgives one bad draw) |
 | `showTranscript` | true | Whether the student sees the automatic transcript of their own recording |
+| `feedbackFooter` | none | Plain-text note appended to the bottom of every question's feedback — e.g. how the scale reads (INV-USE-7) |
 | `allowPrivateCode` | true | Offers the `p:` email opt-out. Only relevant when `requireAccessKey` is **false** — key mode already sends no email |
 | `retakeCooldownSec` | 300 | Wait before a *new* question if the last one was abandoned (INV-SEC-7). `0` disables |
 | `cooldownClearsAfterSec` | 60 | How much of the window an attempt must actually consume to count as "really taken" and clear the cooldown. Well under a typical answer, well above zero |
@@ -246,8 +247,16 @@ Access, grading and privacy:
 
 The challenge codes are **one per question boundary** — four digits before the first question, four
 after each answer, nothing mid-answer (decision C2). A 3-question attempt therefore has 4 codes,
-and each interior one both closes an answer and opens the next question. How attempts combine is a
-**Gradescope** setting, not a `course.json` knob — see the best-of requirement below.
+and each interior one both closes an answer and opens the next question.
+
+**A missed code does not zero the attempt** (INV-CODE-4). If at least half the codes were heard
+(3 of 6 at five questions) and every other check passed, the answers are graded and the score
+stands, but the submission carries a ⚑ REVIEW flag and the student is told the review may affect
+their grade. If fewer than half were heard, or **any other** check failed, it scores 0. It is
+still graded, though: the feedback is kept instructor-only, marked NOT COUNTED, and the hidden
+"Would-have-been score" test gives the figure to override with if you judge the failure benign.
+
+How attempts combine is a **Gradescope** setting, not a `course.json` knob — see the best-of requirement below.
 ## Handing out quiz keys
 
 Every student needs **their** key and nobody else's. Brightspace already solves that — a grade
@@ -581,24 +590,64 @@ node tools/set-grading.js --course courses/<id> --assignment week-10-x --backend
 It prints the rest of the checklist every time — rebuild the zip, re-calibrate, regrade — because
 the edit is the easy part and forgetting the rest is what actually goes wrong.
 
-**Per-assignment overrides, not per-assignment zips.** The week is resolved from the Gradescope
-assignment title, so one zip already serves your whole term. Running GenAI for weeks 1–5 and local
-afterwards is a per-assignment `gradingBackend` in `course.json` plus one rebuild — not two
-artifacts to keep in step, where the one you forget is the one that grades wrong.
+**Per-assignment overrides.** Running GenAI for weeks 1–5 and local afterwards is a per-assignment
+`gradingBackend` in `course.json` plus one rebuild. Packaging writes one zip per assignment and each
+one is pinned to the assignment it grades, so upload the zip whose filename names the week.
 
 **The GenAI key ships only where it is needed.** `autograder.zip` carries your signing secret in
 plaintext (Gradescope has no secrets manager) and is readable by anyone with staff access to the
-course. If no assignment uses `genai`, the build leaves the GenAI credentials out entirely and says
-so. If some assignment still uses it, the key is included — checked per assignment, so a mixed-mode
-course does not silently break.
+course. The GenAI credentials go into a zip only when **that zip's own assignment** grades with
+`genai` — so on a mixed-mode course the weeks you grade locally ship no key at all, even though
+other weeks use one. The same cut runs the other way: a `genai` zip is built without the ~2 GB local
+model, which it could never fall back to anyway. The build log says which zip got what.
 
 Full measurements and the reasoning behind each option:
 **[GRADER-BACKENDS.md](GRADER-BACKENDS.md)**.
+
+**If the local grader marks too generously**, there is one knob measured to help. Set
+
+```json
+"scoring": { …, "requireGroundedEvidence": true }
+```
+
+and a point the grader credits on a quote that does not appear in the student's transcript is
+scored as absent instead. Measured on quiz-03 with qwen2.5-3b: a quote the student never said
+accompanied credit that was not earned **97% of the time**. Measured with it on and off over the
+whole benchmark, over-crediting falls by about **a third** (50.9% to 32.5% of judgements) and
+credit wrongly withdrawn rises from **0.0% to 0.6%** — the cases where the grader paraphrases
+instead of quoting. It is **off by default** because those withdrawals take
+marks off work that was done, and that trade is yours to make rather than ours. Run
+`tools/eval/points-bench.py` on your own bank to see the numbers before deciding.
 
 Whichever you pick is the grader that must run. There are **no automatic fallbacks**. If a `genai`
 course cannot reach GenAI, the recording remains ungraded and the instructor sees `REGRADE
 REQUIRED`; regrade all affected submissions together once the named backend works. This prevents
 an outage from silently measuring some students by a different method (INV-GRADE-1).
+
+**If the named backend is what is broken**, switching the course over is not the fix — that would
+re-cut the released zip and grade the punctual half of the cohort differently from the late half.
+Build a **regrade variant** instead: a second zip, under its own filename, leaving the released one
+untouched. Declare it on the assignment,
+
+```json
+"regrade": { "id": "local-qwen", "gradingBackend": "local",
+             "note": "genai was rate-limited on 2026-09-17; nothing graded" }
+```
+
+then build it and upload *that* zip to the same Gradescope assignment:
+
+```bash
+node tools/build-autograder.js courses/<id>/course.json --zip \
+  --assignment <aid> --regrade local-qwen
+```
+
+It ships the same bank, the same questions and the same `scoring`, and grades with the local model,
+which needs **4 CPU / 6 GB** where a genai-only zip got by with 2 CPU / 3 GB — change the container
+setting when you upload it or it will OOM. Uploading it and pressing Regrade re-marks **every**
+submission, including ones already returned, which is the point: one cohort, one grader. Read
+[LOCAL-GRADING.md](LOCAL-GRADING.md) first: the default is now Qwen3.5 4B, and a different
+grader can change marks even when the points curve stays fixed. Named `regrades` may also
+select an enhanced bank with identical student questions; the builder verifies that constraint.
 
 ### Why `local` is the default — and the thing you should read before choosing `genai`
 
@@ -611,6 +660,24 @@ an outage from silently measuring some students by a different method (INV-GRADE
 
 The default is `local` because that is the conservative choice to make on someone else's behalf.
 It is not a claim that local grades better. It does not.
+
+### When Purdue retires the GenAI model
+
+Your autograder zip records the GenAI model name **at build time**. When Purdue replaces a model
+(for example `qwen3.6:27b` → `qwen3.8:27b` on 2026-09-23), every zip built against the old name
+stops grading. Students get **no mark**, not a low one, and the Gradescope output says which model
+is gone. To switch:
+
+```bash
+node tools/genai-models.js --course courses/<your-course>/course.json
+```
+
+This lists what the service offers now and suggests the closest match. Set `GENAI_STUDIO_MODEL` to
+that name in `courses/<your-course>/.env`, rebuild with `npm run package -- courses/<your-course>/course.json --zip`,
+upload the new zip and regrade the assignment. A new model is a new grader, so check it on a few
+answers you have already marked before you release its marks. The build refuses outright if the
+model it is given is not on the service's list. If GenAI Studio is down at build time, the build
+only warns, so run the command above before you upload.
 
 ### Calibration — run this before students use it
 
@@ -805,3 +872,9 @@ npm run signer                 # :8787   (terminal 1)
 npm run web                    # :8080   (terminal 2)
 node tools/gen-url.js --assignment demo-oral --student you@purdue.edu   # open the printed link
 ```
+
+### Current local grading profile
+New local packages use `qwen35-context-off-v1` (Qwen3.5 4B Q4_K_M, thinking off),
+not the historical Qwen2.5 band grader. Use 4 CPU / 6 GB and a 40-minute timeout.
+See [Local grading](LOCAL-GRADING.md) for context authoring, versioned alternatives,
+reproduction commands, undergrading/overgrading evidence and known semantic failures.

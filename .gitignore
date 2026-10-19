@@ -90,3 +90,8 @@ dist/
 
 # Public-guide rendering evidence (final public assets live in docs/public/site/).
 /tmp/public-guides/
+
+/autograder/source/local-profile.json
+
+# Gradescope submission exports (student audio + identities). Never commit.
+assignment_*_export/

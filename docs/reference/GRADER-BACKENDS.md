@@ -1,10 +1,15 @@
 # Grading backends — measurement and recommendation
 
+**Current default (2026-09-21): Qwen3.5 4B Q4_K_M, context/no-thinking.** See
+[LOCAL-GRADING.md](LOCAL-GRADING.md) for points-mode evidence and the versioned integration.
+The study below is preserved as historical band-mode evidence; its “default” and “only model”
+statements describe the earlier release, not current configuration.
+
 _Re-measured 2026-08-31. Twelve local candidates and two Purdue GenAI models over the same answers.
 Reproduce with `tools/eval/model-study.py` (local) and `tools/eval/bench.py` (GenAI); qualify your
 own course with `tools/calibrate-grader.py`._
 
-## Recommendation, up front
+## Historical band-mode recommendation (superseded for new local packages)
 
 **There is no model menu any more, and that is the finding.** Twelve local candidates were measured;
 eleven lost. The choice that remains is a *backend* choice, and it is a real one.
@@ -79,7 +84,8 @@ narrow questions it answers reliably. Code applies the thresholds, so they canno
 same verdicts give the same mark on every backend, and a policy change means recomputing from the
 saved verdicts, not regrading.
 
-**The arithmetic** (defaults; each number is a key under `scoring`):
+**The arithmetic in band-priced points mode** (defaults; each number is a key under `scoring`;
+adding `table` replaces the band thresholds below with a curve — see *Curve mode*):
 - Required points are worth 2 each and optional points 1 each. `partly` earns half the weight, and
   `contradicted` costs the weight.
 - With `base` = 2 × the number of required points: below base is `weak`, base is `partial`,
@@ -92,9 +98,41 @@ saved verdicts, not regrading.
 - A reply missing a verdict for any point is re-asked, then marked REGRADE REQUIRED. It is never
   counted as `absent`.
 
-**What students see.** They get narrative feedback: what they got right, anything to revisit, what
-the question was getting at, and ideas that would have strengthened the answer. They never see
-points, verdicts or the rubric. The per-point record goes in the instructor-only detail.
+**What students see.** They get narrative feedback: what they got right — including a good example
+of their own — and anything to revisit, with what the question was getting at only when the answer
+missed it. They are **not** told which listed ideas they did not mention (instructor, 2026-09-15):
+a student who answered well and is handed a list of unsaid things reads it as what they lost, and
+several of those points are not derivable from the prompt. They never see points, verdicts or the
+rubric. The per-point record goes in the instructor-only detail.
+
+### Curve mode: `scoring.table`
+
+Set `table` and the bands stop deciding the mark — the point total is read straight off a curve the
+instructor writes, one entry per whole point, with a total between two entries taking the lower:
+
+```json
+"scoring": { "mode": "points", "table": [0, 0.7, 0.85, 0.9, 0.92, 0.95, 0.97, 1.0],
+             "novelCap": 3, "falseClaimCapScore": 0.85, "noCoreCapScore": 0.7 }
+```
+
+- **Novel points.** The model also reports substantive, correct points the student made that are on
+  neither list, each `full` (+`novelWeight`), `partial` (half) or `wrong`, with a quote. Credit is
+  capped at `novelCap` per answer. `wrong` is a false claim: it costs the weight and trips the
+  ceiling. A novel point without a quote counts neither way, exactly like an unquoted penalty.
+- **`partlyFactor` prices a half-made point.** 0.5 by default; set it to 1 and a `partly` earns
+  what a `stated` does (and so does a novel `partial`). It may not exceed 1. At 1, an answer that
+  gestures at every point scores exactly what a crisp one does — usually more than intended.
+- **`curveRounding` decides which way a half point goes.** `"down"` (default) or `"up"`. Rounding
+  up is the cheaper kindness: `partly` stays worth half, so two of them still buy only what one
+  whole point buys, but a lone half-made point can never round away to nothing. That matters
+  because the feedback tells the student the grader saw something; a mark of zero for it says
+  otherwise.
+- **Two ceilings replace the band cap.** `falseClaimCapScore` is the most an answer with an
+  uncorrected false claim can score; `noCoreCapScore` the most an answer that conveyed no core
+  point can score, so depth and novel credit cannot stand in for answering the question.
+- **No ladder is needed.** No band name is ever produced, so a course on a curve is not required to
+  keep a five-rung ladder it does not use. An unusable curve — fewer than two entries, non-numeric,
+  outside 0–1, or decreasing — is refused whole and grades nobody, like any other bad policy.
 
 **Measurement status.** A simulation of students who hit each point independently put points mode
 slightly below the pilot's Quiz 1 scale and well above its Quiz 2 band ladder as shipped (/10, best

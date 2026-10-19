@@ -151,6 +151,25 @@ function runAutograder(assignmentId, subDir, extra = {}) {
   return JSON.parse(fs.readFileSync(resPath, 'utf8'));
 }
 
+// INV-CODE-4: at least half the codes heard -> graded, flagged and told so.
+// Fewer than half, or any other integrity failure -> 0, graded out of the student's sight.
+function shadowGraded(res, { positive = true } = {}) {
+  const t = res.tests || [];
+  const would = t.find((x) => x.name === 'Would-have-been score (instructor only)');
+  const hidden = t.filter((x) => x.name.startsWith('NOT COUNTED'));
+  return res.score === 0 && !!would && would.visibility === 'hidden' && (!positive || parseFloat(would.output) > 0)
+    && hidden.length > 0 && hidden.every((x) => x.visibility === 'hidden' && x.score === undefined)
+    && !t.some((x) => x.visibility === 'visible' && x.score !== undefined);
+}
+function partlyHeard(res) {
+  const t = res.tests || [];
+  const v = t.find((x) => x.name === 'Validation checks');
+  return res.score > 0
+    && v && v.status === 'failed' && v.visibility === 'visible' && /MAY AFFECT YOUR FINAL GRADE/.test(v.output)
+    && t.some((x) => x.name.startsWith('\u2691 REVIEW') && /GRADED DESPITE MISSING CODES/.test(x.output))
+    && /MAY AFFECT YOUR FINAL GRADE/.test(res.output);
+}
+
 // Full honest attempt: reveal -> (answer -> boundary code)*N -> finish.
 async function honestAttempt(assignmentId, studentRef, { waitSec = 3, wavSeconds, hashOfWav, v3, accessKey } = {}) {
   // v3 = public course link + opaque studentRef; otherwise the legacy per-student link.
@@ -254,6 +273,7 @@ const record = (name, pass, detail) => { results.push({ name, pass, detail }); c
       fs.appendFileSync(path.join(dir, 'answer.wav'), Buffer.from('EXTRA-BYTES')); // change bytes after cert
       const res = runAutograder('demo-fast', dir);
       record('A. tampered audio rejected', res.score === 0);
+      record('A2. …scored 0 but graded for the instructor (INV-CODE-4)', shadowGraded(res));
     }
     // B) forged certificate signature
     {
@@ -282,6 +302,8 @@ const record = (name, pass, detail) => { results.push({ name, pass, detail }); c
       fs.writeFileSync(path.join(SCRATCH, 'long', 'submission_metadata.json'), JSON.stringify({ users: [{ email: 'pete@purdue.edu' }] }));
       const res = runAutograder('demo-fast', dir);
       record('C. pre-recorded long audio rejected (duration > window)', res.score === 0);
+      // Nothing was said inside a zero-second question window, so the would-be score is 0 too.
+      record('C2. …scored 0 but graded for the instructor (INV-CODE-4)', shadowGraded(res, { positive: false }));
     }
     // D) late submission -> server refuses to certify (demo-tiny, limit 1, grace 0)
     {
@@ -297,7 +319,7 @@ const record = (name, pass, detail) => { results.push({ name, pass, detail }); c
       const words = buildWords(rev.attemptId, fin.certificate, byId, { skipCodes: [0] });
       const dir = writeSubmission(path.join(SCRATCH, 'noopen', 'submission'), { wavSeconds: wsec, cert: fin.certificate, certToken: fin.certificateToken, words, metaEmail: 'pete@purdue.edu' });
       const res = runAutograder('demo-fast', dir);
-      record('E. missing OPENING code rejected (INV-INTEGRITY-4)', res.score === 0);
+      record('E. missing OPENING code: still graded, flagged, student warned (INV-CODE-4)', partlyHeard(res), `score=${res.score}`);
     }
     // E2) closing code never spoken — the tail of the recording is unpinned
     {
@@ -305,7 +327,15 @@ const record = (name, pass, detail) => { results.push({ name, pass, detail }); c
       const words = buildWords(rev.attemptId, fin.certificate, byId, { skipCodes: [1] });
       const dir = writeSubmission(path.join(SCRATCH, 'noclose', 'submission'), { wavSeconds: wsec, cert: fin.certificate, certToken: fin.certificateToken, words, metaEmail: 'pete@purdue.edu' });
       const res = runAutograder('demo-fast', dir);
-      record('E2. missing CLOSING code rejected (INV-INTEGRITY-5)', res.score === 0);
+      record('E2. missing CLOSING code: still graded, flagged, student warned (INV-CODE-4)', partlyHeard(res), `score=${res.score}`);
+    }
+    // E2b) NO code spoken: scores 0, but the would-be grade is kept for the instructor
+    {
+      const { rev, qn, wsec, fin } = await honestAttempt('demo-fast', 'pete@purdue.edu', { waitSec: 3 });
+      const words = buildWords(rev.attemptId, fin.certificate, byId, { skipCodes: [0, 1] });
+      const dir = writeSubmission(path.join(SCRATCH, 'nocodes', 'submission'), { wavSeconds: wsec, cert: fin.certificate, certToken: fin.certificateToken, words, metaEmail: 'pete@purdue.edu' });
+      const res = runAutograder('demo-fast', dir);
+      record('E2b. NO code heard: scored 0 but graded for the instructor (INV-CODE-4)', shadowGraded(res), `score=${res.score}`);
     }
     // E3) skipping /closing entirely: a RevealToken must not certify
     {
@@ -323,6 +353,7 @@ const record = (name, pass, detail) => { results.push({ name, pass, detail }); c
       const dir = writeSubmission(path.join(SCRATCH, 'identity', 'submission'), { wavSeconds: wsec, cert: fin.certificate, certToken: fin.certificateToken, words, metaEmail: 'someone.else@purdue.edu' });
       const res = runAutograder('demo-fast', dir);
       record('F. shared-link identity mismatch rejected', res.score === 0);
+      record('F2. …scored 0 but graded for the instructor (INV-CODE-4)', shadowGraded(res));
     }
     // G) oversized DoS body -> server rejects
     {
@@ -691,7 +722,21 @@ const record = (name, pass, detail) => { results.push({ name, pass, detail }); c
           words: buildWords(c.rev.attemptId, c.fin.certificate, byId, { skipCodes: [2] }),
           metaEmail: 'skip@purdue.edu' });
       const resC = runAutograder('demo-multi', dirC);
-      record('S5. a missing INTERIOR code rejects the attempt', resC.score === 0, `score=${resC.score}`);
+      record('S5. a missing INTERIOR code: still graded, flagged, student warned (INV-CODE-4)', partlyHeard(resC), `score=${resC.score}`);
+      // The threshold is HALF of the N+1 codes: 2 of 4 heard grades, 1 of 4 does not.
+      for (const [tag, skip, ok, label] of [
+        ['S5b', [0, 2], partlyHeard, 'exactly half the codes heard: graded and flagged'],
+        ['S5c', [0, 1, 2], shadowGraded, 'fewer than half heard: scored 0, graded for the instructor'],
+      ]) {
+        const m = await honestAttempt('demo-multi', P.studentRefFromEmail(COURSE.pseudonymSalt, `half${tag}@purdue.edu`),
+          { waitSec: 3, v3: true });
+        const dirM = writeSubmission(path.join(SCRATCH, 'multi' + tag, 'submission'),
+          { wavSeconds: m.wsec, cert: m.fin.certificate, certToken: m.fin.certificateToken,
+            words: buildWords(m.rev.attemptId, m.fin.certificate, byId, { skipCodes: skip }),
+            metaEmail: `half${tag}@purdue.edu` });
+        const resM = runAutograder('demo-multi', dirM);
+        record(`${tag}. ${label} (INV-CODE-4)`, ok(resM), `score=${resM.score}`);
+      }
 
       // Finishing early would bank the questions already seen and drop the rest —
       // and would leak two questions per attempt to a shopper.

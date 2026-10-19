@@ -132,11 +132,15 @@ node tools/set-grading.js --course courses/<id> --show
 node tools/set-grading.js --course courses/<id> --backend genai
 ```
 
-`local` bundles a small open-weights model (Qwen 2.5 3B) into the autograder image, so transcripts
-never leave the Gradescope container. It is the default because of **where it runs**, not because it
-grades best — and if you only ever try `local`, you will underestimate what oral quizzes can do.
+`local` defaults to **Qwen3.5 4B Q4_K_M**, with enhanced answer-key context and thinking off.
+It grades one question at a time inside Gradescope. See [Local grading](docs/reference/LOCAL-GRADING.md)
+for the versioned profile, 500-case synthetic evaluation, separate under/overgrading results,
+resource limits, and how to build a versioned alternative. Existing Qwen2.5 pins remain supported.
 
-#### Use `genai` if your institution allows it
+The comparison below is historical **Qwen2.5 band-mode** evidence; it does not describe the
+current Qwen3.5 points grader.
+
+#### Historical band-mode comparison
 
 Measured on one real 100-question bank, 396 answers, both graders on the shipped code path:
 

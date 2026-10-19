@@ -52,24 +52,32 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(ROOT, 'autograder', 'source'))
 
 import bench as B                                                   # noqa: E402
+import qwen35 as Q
+from modelcache import cached_model_path
 import variants as V                                                # noqa: E402
 
 ORDER = ["full", "partial", "weak", "none"]
 NOMINAL = {"full": 1.0, "partial": 0.65, "weak": 0.3, "none": 0.0}
 SLATE = json.load(open(os.path.join(HERE, 'model-slate.json')))['models']
 BY_KEY = {m['key']: m for m in SLATE}
-MODELDIR = os.path.join(HERE, 'models')
+def study_model_path(spec):
+    override = os.environ.get('ORALSCALE_MODEL_DIR')
+    if override:
+        return os.path.join(os.path.expanduser(override), spec['file'])
+    if spec['key'] == 'qwen3.5-4b':
+        return Q.model_path()
+    return cached_model_path(spec['repo'], spec['file'])
+
 RESULTS = os.path.join(HERE, 'study-results')
 
 
 # ---------------------------------------------------------------------------
 # serving — llama-server, one model at a time, deliberately
 #
-# Not ollama: the Homebrew build on this machine is CPU-only (measured, 17 s per
-# answer against ~1 s here), and more importantly ollama re-quantises and re-wraps
-# a GGUF behind its own name, so what runs is a step removed from the file the
-# autograder would download. llama-server loads the exact Q4_K_M artefact at the
-# exact context the grader uses.
+# Keep llama-server for parity with the qualified grader's runtime and options.
+# Weights come from the shared Hub cache, not a repository-local model directory.
+# Ollama can import GGUF without re-quantizing; changing the serving engine still
+# requires a separate grading-quality evaluation.
 #
 # ONE AT A TIME is a hard rule, not a nicety: this is someone's working laptop,
 # and holding two 5 GB models resident takes it away from them. The server is
@@ -86,12 +94,12 @@ class Server:
 
     def __init__(self, key, ctx=4096):
         self.spec, self.ctx, self.proc = BY_KEY[key], ctx, None
-        self.path = os.path.join(MODELDIR, self.spec['file'])
+        self.path = study_model_path(self.spec)
         self.log = os.path.join(RESULTS, f"server.{key}.log")
 
     def __enter__(self):
-        if not os.path.exists(self.path):
-            raise SystemExit(f"model file missing: {self.path}")
+        if not self.path or not os.path.exists(self.path):
+            raise SystemExit(f"Model missing from shared Hugging Face cache: {self.spec['repo']} / {self.spec['file']}; download it there explicitly before running this study.")
         env = dict(os.environ, DYLD_LIBRARY_PATH=LCPP)
         cmd = [os.path.join(LCPP, 'llama-server'), '-m', self.path,
                '-c', str(self.ctx), '-b', '256', '--port', str(PORT),
@@ -312,9 +320,9 @@ if __name__ == '__main__':
 
     if a.list:
         for m in SLATE:
-            p = os.path.join(MODELDIR, m['file'])
+            p = study_model_path(m)
             print(f"  {m['key']:14s} {m['gb']:5.2f} GB  {m['family']:8s} "
-                  f"{'downloaded' if os.path.exists(p) else 'MISSING'}")
+                  f"{'downloaded' if p and os.path.exists(p) else 'MISSING'}")
         sys.exit(0)
 
     if a.report:

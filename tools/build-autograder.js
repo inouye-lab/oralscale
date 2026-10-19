@@ -24,6 +24,7 @@ const path = require('path');
 const { resolveBank, warnIfUnbacked } = require('./lib/course.js');
 const SECRETS = require('./lib/secrets.js');
 const GUARDS = require('./lib/course-guards.js');
+const LOCAL = require('./lib/local-profile.js');
 const { spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
@@ -33,7 +34,7 @@ const optValue = (n) => {
   const i = args.indexOf('--' + n);
   return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : null;
 };
-const coursePath = args.find((a) => !a.startsWith('--') && a !== optValue('assignment'))
+const coursePath = args.find((a) => !a.startsWith('--') && a !== optValue('assignment') && a !== optValue('regrade'))
   || path.join(ROOT, 'courses', 'demo', 'course.json');
 
 if (!fs.existsSync(coursePath)) {
@@ -41,6 +42,15 @@ if (!fs.existsSync(coursePath)) {
   process.exit(1);
 }
 const course = JSON.parse(fs.readFileSync(coursePath, 'utf8'));
+const debugIdentity = flag('debug-identity');
+if (debugIdentity && (!flag('zip') || !optValue('assignment'))) {
+  console.error('--debug-identity requires --zip and an explicit --assignment.');
+  process.exit(1);
+}
+if (Object.prototype.hasOwnProperty.call(course, 'debugAutograder')) {
+  console.error('debugAutograder is generated package metadata, not a course setting. Use --debug-identity.');
+  process.exit(1);
+}
 const courseDir = path.dirname(path.resolve(coursePath));
 const releaseVersion = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 const safeCourseId = String(course.courseId || path.basename(courseDir)).replace(/[^a-z0-9._-]+/gi, '-');
@@ -58,13 +68,14 @@ const safeCourseId = String(course.courseId || path.basename(courseDir)).replace
 const artifactDir = path.join(courseDir, 'autograders');
 const safeId = (x) => String(x).replace(/[^a-z0-9._-]+/gi, '-');
 const artifactNameFor = (aid) =>
-  `${safeCourseId}-${safeId(aid)}-oralscale-v${releaseVersion}.zip`;
+  `${safeCourseId}-${safeId(aid)}-oralscale-v${releaseVersion}${artifactSuffix}${debugIdentity ? "-DEBUG-identity-flag-only" : ""}.zip`;
 const artifactPathFor = (aid) => path.join(artifactDir, artifactNameFor(aid));
 // Packaging is the moment the bank leaves the folder — a good time to ask whether
 // the folder itself is backed up anywhere (decision R3).
 warnIfUnbacked(path.dirname(coursePath), { courseId: course.courseId || path.basename(path.dirname(coursePath)) });
 const srcDir = path.join(ROOT, 'autograder', 'source');
 const banksOut = path.join(srcDir, 'banks');
+fs.rmSync(path.join(srcDir, 'local-profile.json'), { force:true });
 // START FROM EMPTY. This directory is a build output, and copying into it
 // without clearing it first meant every bank ever built accumulated there and
 // shipped in the next zip: a one-bank course was packaging fourteen banks from
@@ -380,12 +391,118 @@ function assignmentProblems(aid) {
  * The zip already in `autograders/` is untouched either way: nothing here deletes
  * or moves it, so a skip leaves the released artifact exactly as it was. */
 const repackageFrozen = flag('repackage-frozen');
+
+/* A REGRADE VARIANT: a SECOND grader for an assignment that is already released.
+ *
+ * `--repackage-frozen` re-cuts the released zip over its own filename, and that
+ * is the right tool for a fix everybody should get. It is the wrong tool for
+ * "grade this quiz again under a different scale and let me compare", because
+ * the artifact that graded the first pass stops existing the moment it runs.
+ *
+ * A variant is declared IN THE COURSE, never invented on the command line:
+ *
+ *   "quiz-02-x": { …, "regrade": { "id": "curve-v2",
+ *                                  "scoring": { …a whole scoring policy… },
+ *                                  "note": "why this regrade exists" } }
+ *
+ * and built with `--assignment quiz-02-x --regrade curve-v2`. What comes out is
+ * pinned to THE SAME assignment id — certificates carry the assignment they were
+ * issued for, so a variant with a new id would reject every submission it was
+ * built to re-mark (INV-DEPLOY-3) — with only the declared GRADING SETTINGS
+ * replaced, and written to a DIFFERENT filename. The released zip is not read, not moved and not
+ * overwritten, which is why this does not need `--repackage-frozen`: the accident
+ * INV-DEPLOY-6 exists to prevent is not reachable from here.
+ *
+ * TWO SETTINGS MAY MOVE, and a variant must name at least one:
+ *
+ *   `scoring`         re-mark the same judgements on a different scale.
+ *   `gradingBackend`  re-mark with a different GRADER — the case this was
+ *                     extended for: `genai` went unavailable (rate limits, an
+ *                     outage, an exhausted quota) and NOTHING was graded, which
+ *                     INV-GRADE-1 makes deliberate. The remedy it names is to
+ *                     "rebuild the zip with a working local model" and regrade
+ *                     the whole cohort together — and that rebuild is exactly a
+ *                     variant: a second zip, under its own name, leaving the
+ *                     released one alone.
+ *
+ * Both live in course.json rather than in a flag on purpose. Six weeks later,
+ * "which scale, and which grader, produced these marks?" has to be answerable
+ * from the repository, not from someone's shell history. */
+const regradeVariant = optValue('regrade') || '';
 const isFrozen = (aid) => !!((course.assignments || {})[aid] || {}).frozen;
+let artifactSuffix = '';
+if (regradeVariant) {
+  if (!only) {
+    console.error('\n--regrade needs --assignment: a regrade re-marks ONE released assignment.');
+    process.exit(1);
+  }
+  const ac = (course.assignments || {})[only] || {};
+  const spec = (ac.regrades || {})[regradeVariant] || ac.regrade;
+  if (!spec || spec.id !== regradeVariant) {
+    console.error(`\n"${only}" declares no regrade variant "${regradeVariant}".`);
+    console.error('  Declare it in course.json as `"regrade": { "id": …, "scoring": … }`,');
+    console.error('  so the scale that produced the marks is recorded where anyone can read it.');
+    console.error(`  Found: ${spec ? JSON.stringify(spec.id) : 'no regrade block'}`);
+    process.exit(1);
+  }
+  if (!spec.scoring && !spec.gradingBackend && !spec.localModel && !spec.bank) {
+    console.error(`\nregrade variant "${regradeVariant}" replaces nothing — it declares neither`);
+    console.error('  `scoring` nor `gradingBackend`, so it would rebuild the released grader');
+    console.error('  under a new filename, which is not a regrade.');
+    process.exit(1);
+  }
+  /* A VARIANT FREEZES TOO (INV-DEPLOY-6). Once a regrade zip is the artifact a
+     cohort is actually being re-marked against, it has the same claim on being
+     left alone as the original release did — and more urgently, because a
+     regrade runs over submissions that already have marks in the gradebook.
+     Rebuilding it midway means two halves of one regrade graded by different
+     code, which is the exact failure the freeze exists to prevent. */
+  if (spec.frozen && !repackageFrozen) {
+    console.error(`\n❌ regrade variant "${regradeVariant}" is FROZEN and was not rebuilt.`);
+    console.error('   Its zip is uploaded and is what is re-marking this assignment.');
+    console.error(`   Rebuilding it now would regrade half the cohort with different code.`);
+    if (spec.sha256) console.error(`   The frozen artifact is sha256 ${spec.sha256}.`);
+    console.error('');
+    console.error('   If the regrade itself needs re-cutting, re-run the WHOLE regrade:');
+    console.error(`     node tools/build-autograder.js ${path.relative(ROOT, coursePath)} --zip \\`);
+    console.error(`       --assignment ${only} --regrade ${regradeVariant} --repackage-frozen`);
+    process.exit(1);
+  }
+  artifactSuffix = `-regrade-${safeId(regradeVariant)}`;
+
+  /* APPLY THE OVERRIDES NOW, not in the per-assignment loop below.
+   *
+   * Everything that decides what goes INTO the image is derived from `copy`
+   * further down — which backend the assignment grades with, and therefore
+   * whether setup.sh bakes in the 2 GB local GGUF (ORALSCALE_LOCAL_REQUIRED)
+   * and whether the GenAI credentials are written into the zip at all. A
+   * variant that flips `gradingBackend` to `local` and is applied after those
+   * are computed produces a zip that ASKS for the local model and does not
+   * carry it, which fails at grading time rather than at build time — the one
+   * shape of mistake this file exists to make impossible. */
+    if (spec.bank) LOCAL.alternativePath(coursePath,
+    resolveBank(coursePath, course.assignments[only].bank), spec.bank);
+  Object.assign(copy.assignments[only], regradeOverrides(spec));
+}
+
+/* The settings a variant may replace, and nothing else, so a difference between
+ * the two sets of marks cannot be anything but what the variant declares. */
+function regradeOverrides(spec) {
+  const o = {};
+  if (spec.scoring) o.scoring = spec.scoring;
+  if (spec.localModel) o.localModel = spec.localModel;
+  if (spec.bank) o.bank = spec.bank;
+  if (spec.gradingBackend) o.gradingBackend = String(spec.gradingBackend).toLowerCase();
+  return o;
+}
 
 const requested = only ? [only] : Object.keys(course.assignments || {});
 const buildable = [];
 for (const aid of requested) {
-  if (isFrozen(aid) && !repackageFrozen) {
+  // A regrade variant writes its own filename, so the released artifact cannot be
+  // the casualty the freeze guard is watching for. Frozen is in fact the normal
+  // state of an assignment worth regrading.
+  if (isFrozen(aid) && !repackageFrozen && !regradeVariant) {
     if (only) {
       console.error(`\n❌ "${aid}" is FROZEN and was not repackaged.`);
       console.error('   Its autograder zip is already uploaded to Gradescope and is what grades');
@@ -436,7 +553,14 @@ delete env.ORALSCALE_ALLOW_TRANSCRIPT_SIDECAR;
 
 const GENAI_KEYS = ['GENAI_STUDIO_API_KEY', 'GENAI_STUDIO_BASE_URL', 'GENAI_STUDIO_MODEL'];
 const genaiFound = GENAI_KEYS.filter((k) => cfgVar(k));
-for (const k of genaiFound) env[k] = cfgVar(k);
+// RESOLVED, BUT NOT YET IN THE ENVIRONMENT. Which zip carries the key is decided
+// per assignment, in the build loop below, because each zip contains exactly one
+// assignment (INV-DEPLOY-3) and its environment must match THAT assignment.
+// Cleared from the base environment too: an exported GENAI_STUDIO_* would
+// otherwise ride into a locally-graded zip through `{ ...process.env }`.
+const GENAI_ENV = {};
+for (const k of genaiFound) GENAI_ENV[k] = cfgVar(k);
+for (const k of GENAI_KEYS) delete env[k];
 if (genaiFound.length === 3) {
   console.log(`Purdue GenAI credentials: complete (model ${cfgVar('GENAI_STUDIO_MODEL')}).`);
 } else if (genaiFound.length > 0) {
@@ -455,43 +579,49 @@ if (fs.existsSync(stale)) {
 
 console.log('\nPackaging…');
 // ---------------------------------------------------------------------------
-// Does ANY assignment in this course actually use Purdue GenAI?
+// Which assignments use Purdue GenAI, and which grade locally?
 //
 // The GenAI key lands in autograder.zip in PLAINTEXT — Gradescope has no secrets
-// manager — and anyone with staff access to the course can read it. So a course
+// manager — and anyone with staff access to the course can read it. So a zip
 // that grades locally must not ship the key at all: an unused secret in a
 // readable artifact is pure downside, and "we changed the backend" is exactly the
 // moment it would otherwise be left behind.
 //
-// Checked per ASSIGNMENT as well as on defaults, because a course may run GenAI
-// for the first five weeks and local afterwards — in which case the key IS still
-// needed, and dropping it would silently break those weeks.
+// Resolved per ASSIGNMENT rather than per course, because a course may run GenAI
+// for the first five weeks and local afterwards — and each week ships in its own
+// zip (INV-DEPLOY-3), so "the course uses GenAI somewhere" is not a reason for
+// week six's zip to carry the key. The counts below describe the whole course
+// and drive only the log lines; the decisions live in the build loop.
 // ---------------------------------------------------------------------------
-const backendOf = (aid) => String(
-  (copy.assignments[aid] || {}).gradingBackend
-  ?? (copy.defaults || {}).gradingBackend ?? 'local').toLowerCase();
+const backendIn = (cfg, aid) => String(
+  ((cfg.assignments || {})[aid] || {}).gradingBackend
+  ?? (cfg.defaults || {}).gradingBackend ?? 'local').toLowerCase();
+// Read from `copy`, so any per-assignment override a build applies before the
+// zip is written (a regrade variant's, for one) is the backend this sees.
+const backendOf = (aid) => backendIn(copy, aid);
 const genaiAssignments = Object.keys(copy.assignments || {}).filter((a) => backendOf(a) === 'genai');
-const usesGenai = genaiAssignments.length > 0;
+// WHAT THIS BUILD NEEDS, not what the course contains. `genaiAssignments`
+// describes the whole course and only drives the log lines below. The GenAI
+// credentials and the live model check are REQUIREMENTS, so they are scoped to
+// the zips this run actually writes (`buildable`, after any regrade override):
+// packaging a locally-graded assignment must not demand a key it will not ship,
+// and must not fail because a model some OTHER week grades with was retired.
+const genaiBuilt = buildable.filter((a) => backendOf(a) === 'genai');
+const usesGenai = genaiBuilt.length > 0;
 
 // The local model, likewise, is only worth its ~2 GB if some assignment actually
 // chooses it. INV-GRADE-1 forbids using it as a fallback for GenAI.
-const localAssignments = Object.keys(copy.assignments || {}).filter((a) => backendOf(a) !== 'genai');
+const localAssignments = buildable.filter((a) => backendOf(a) === 'local');
 
-// Does this course actually GRADE with the local model, or merely keep it around?
-// setup.sh needs to know: an unbuildable local runtime is fatal for the first
-// case and a note for the second. Failing an image build over a model the course
-// can never use would leave the instructor with no autograder at all.
-env.ORALSCALE_LOCAL_REQUIRED = localAssignments.length > 0 ? '1' : '0';
-
-// And with no grader fallbacks (INV-GRADE-1), a course that does not grade
-// locally has no reason to carry a 2 GB local model: it could never be used.
-// That is two gigabytes, a llama-cpp-python build that fails outright on some
-// base images, and several minutes of image build, for nothing.
-//
-// An explicit ORALSCALE_SKIP_LOCAL_LLM in the environment still wins either way.
+// ONE COURSE, ONE BACKEND PER ZIP. These two counts describe the COURSE and are
+// only ever used for what is printed below; the environment each zip actually
+// carries — the GenAI credentials, ORALSCALE_LOCAL_REQUIRED and
+// ORALSCALE_SKIP_LOCAL_LLM — is set inside the build loop from the one
+// assignment that zip contains. Deciding it here instead put the GenAI key into
+// a locally-graded zip whenever some OTHER assignment in the course used GenAI,
+// and baked a 2 GB GGUF into a genai-only zip for the mirror-image reason.
 if (localAssignments.length === 0 && process.env.ORALSCALE_SKIP_LOCAL_LLM === undefined) {
-  env.ORALSCALE_SKIP_LOCAL_LLM = '1';
-  console.log('\nNo assignment grades locally, so the local model is NOT bundled: with no grader');
+  console.log('\nNo assignment grades locally, so no zip bundles the local model: with no grader');
   console.log('fallbacks it could never be used. Smaller image, faster build, one less thing to');
   console.log('go wrong. Set ORALSCALE_SKIP_LOCAL_LLM=0 to bundle it anyway.');
 }
@@ -507,19 +637,18 @@ if (!env.ORALSCALE_LOCAL_MODEL_KEY && (copy.defaults || {}).localModel) {
 if (!usesGenai) {
   // Not a warning — a deliberate omission, said out loud so nobody wonders why
   // GenAI stopped working after they flipped the backend.
-  const had = ['GENAI_STUDIO_API_KEY', 'GENAI_STUDIO_BASE_URL', 'GENAI_STUDIO_MODEL']
-    .filter((k) => env[k]);
-  for (const k of had) delete env[k];
+  const had = GENAI_KEYS.filter((k) => GENAI_ENV[k]);
   if (had.length) {
     console.log(`\nNo assignment in this course uses gradingBackend "genai", so the GenAI`);
-    console.log(`credentials were NOT written into the zip (${had.join(', ')}).`);
+    console.log(`credentials were NOT written into any zip (${had.join(', ')}).`);
     console.log('The key would otherwise sit in there in plaintext, readable by anyone with');
     console.log('staff access to the Gradescope course, and never be used.\n');
   }
 } else if (genaiAssignments.length !== Object.keys(copy.assignments || {}).length) {
   console.log(`\nMixed backends in this course: ${genaiAssignments.length} assignment(s) on genai,`);
-  console.log(`${localAssignments.length} on local. Both are bundled, and the GenAI key IS in the`);
-  console.log('zip because some assignment needs it.');
+  console.log(`${localAssignments.length} on local. Each zip holds ONE assignment, so each one`);
+  console.log('carries only what that assignment grades with: the GenAI key goes into the genai');
+  console.log('zips and nowhere else, and the local model is bundled only where it is used.');
 }
 /* PORTABILITY: a genai course must carry its OWN credentials.
  *
@@ -538,11 +667,49 @@ if (usesGenai) {
 }
 
 if (usesGenai && genaiFound.length !== GENAI_KEYS.length) {
-  console.error('\n❌ This course assigns gradingBackend "genai", but all three GENAI_STUDIO_*');
+  console.error(`\n❌ This build packages ${genaiBuilt.join(', ')} with gradingBackend "genai",`);
+  console.error('  but all three GENAI_STUDIO_*');
   console.error('  values are not configured. INV-GRADE-1 forbids silently grading with another');
   console.error('  backend. Set the missing values in .env, or explicitly switch the course to');
   console.error('  local: node tools/set-grading.js --course <dir> --backend local\n');
   process.exit(1);
+}
+/* THE MODEL MUST STILL EXIST (INV-DEPLOY-8).
+ *
+ * The model ID is baked into the zip, and Purdue replaces models in place
+ * (qwen3.6:27b -> qwen3.8:27b, 2026-09-23). A zip built against a retired ID is
+ * well-formed, uploads fine, and then fails every submission. So ask the service
+ * what it offers before packaging, and refuse when it answers without our model.
+ *
+ * Unreachable only WARNS. Unlike a minted link, nothing a student sees depends on
+ * the build moment: GenAI Studio being down right now (it was, 2026-09-19..21)
+ * says nothing about the model, and refusing would block local-only fixes to a
+ * mixed course during an outage. A service that answers "no such model" is
+ * evidence; a service that does not answer is not. */
+if (usesGenai) {
+  // `env` no longer carries the GenAI values (they are held in GENAI_ENV and
+  // added back only for a genai zip), so hand them to the checker explicitly —
+  // it needs the key and base URL to ask the service anything at all.
+  const q = spawnSync(process.execPath, [path.join(__dirname, 'genai-models.js'),
+    '--course', coursePath, '--model', cfgVar('GENAI_STUDIO_MODEL'), '--json'],
+  { encoding: 'utf8', env: { ...env, ...GENAI_ENV }, timeout: 30000 });
+  let r = {};
+  try { r = JSON.parse(String(q.stdout || '').trim().split('\n').pop()); } catch { /* below */ }
+  if (r.code === 0) {
+    console.log(`Purdue GenAI offers '${cfgVar('GENAI_STUDIO_MODEL')}': checked against the live model list.`);
+  } else if (r.code === 3) {
+    console.error(`\n❌ Purdue GenAI does not offer the model '${cfgVar('GENAI_STUDIO_MODEL')}' that this`);
+    console.error('  course grades with, so every submission to this zip would fail. It was');
+    console.error('  probably retired or renamed.');
+    if ((r.nearest || []).length) console.error(`  Closest by name: ${r.nearest.slice(0, 3).join(', ')}`);
+    console.error(`  See the full list:  node tools/genai-models.js --course ${coursePath}`);
+    console.error(`  Then set GENAI_STUDIO_MODEL in ${path.relative(ROOT, SECRETS.envPath(courseDir))} and rebuild.\n`);
+    process.exit(1);
+  } else {
+    warn(`could not confirm that Purdue GenAI still offers '${cfgVar('GENAI_STUDIO_MODEL')}'`
+      + ` (${r.error || (q.error && q.error.message) || 'no answer'}). Building anyway;`);
+    warn(`check it before uploading:  node tools/genai-models.js --course ${coursePath}`);
+  }
 }
 /* ONE PASS PER ASSIGNMENT.
  *
@@ -555,7 +722,10 @@ if (usesGenai && genaiFound.length !== GENAI_KEYS.length) {
 const built = [];
 for (const aid of buildable) {
   const a = course.assignments[aid];
-  const bankPath = resolveBank(coursePath, a.bank);
+  const variant = regradeVariant && ((a.regrades || {})[regradeVariant] || a.regrade);
+  const bankPath = variant && variant.bank
+    ? LOCAL.alternativePath(coursePath, resolveBank(coursePath, a.bank), variant.bank)
+    : resolveBank(coursePath, a.bank);
   const base = path.basename(bankPath);
 
   fs.rmSync(banksOut, { recursive: true, force: true });
@@ -564,10 +734,82 @@ for (const aid of buildable) {
 
   const one = JSON.parse(JSON.stringify(copy));
   one.assignments = { [aid]: { ...copy.assignments[aid], bank: 'banks/' + base } };
+  if (regradeVariant) {
+    // ONLY the declared settings move — they were already merged into `copy`
+    // above, so all that is left here is to say so in the zip and in the log.
+    // Same bank, same questions, same pin, so a difference in the marks cannot
+    // be anything but what this line names.
+    const spec = variant;
+    const moved = Object.keys(regradeOverrides(spec));
+    one.assignments[aid].regradeNote = spec.note
+      || `Regrade variant "${spec.id}": ${moved.join(' and ')} replaced, everything else identical.`;
+    delete one.assignments[aid].regrade;
+    delete one.assignments[aid].regrades;
+    console.log(`\n   regrade variant "${spec.id}": \`${moved.join('`, `')}\` replaced for this build only.`);
+  }
+  if (debugIdentity) {
+    one.debugAutograder = { identityCheck:'flag-only', assignmentId:aid,
+      label:'DEBUG — instructor testing only; do not publish these marks' };
+    console.warn('\n*** DEBUG AUTOGRADER — identity mismatches are flagged but do not block grading. ***');
+    console.warn('All other integrity checks remain enforced. Use only for instructor testing.');
+  }
   fs.writeFileSync(path.join(srcDir, 'course.json'), JSON.stringify(one, null, 2) + '\n');
+
+  /* THE ENVIRONMENT MATCHES THE ASSIGNMENT IN THE ZIP (INV-PRIV-6, INV-DEPLOY-3).
+   *
+   * Read from `one` — the config actually written into this zip, after any
+   * per-build override — so the two can never disagree. A zip whose embedded
+   * course.json says `local` must not carry the GenAI key: it lands in
+   * PLAINTEXT (Gradescope has no secrets manager), anyone with staff access to
+   * the course can read it, and nothing in that zip will ever use it. The
+   * mirror case costs build time instead of secrecy — a genai-only zip baking
+   * in a ~2 GB GGUF it can never reach, because INV-GRADE-1 forbids falling
+   * back to it. */
+  const genaiHere = backendIn(one, aid) === 'genai';
+  for (const k of GENAI_KEYS) {
+    if (genaiHere && GENAI_ENV[k]) env[k] = GENAI_ENV[k];
+    else delete env[k];
+  }
+  // Does THIS zip actually grade with the local model? setup.sh needs to know:
+  // an unbuildable local runtime is fatal for the first case and a note for the
+  // second. Failing an image build over a model this assignment can never use
+  // would leave the instructor with no autograder at all.
+  env.ORALSCALE_LOCAL_REQUIRED = genaiHere ? '0' : '1';
+  // An explicit ORALSCALE_SKIP_LOCAL_LLM in the environment still wins either way.
+  if (process.env.ORALSCALE_SKIP_LOCAL_LLM === undefined) {
+    if (genaiHere) env.ORALSCALE_SKIP_LOCAL_LLM = '1';
+    else delete env.ORALSCALE_SKIP_LOCAL_LLM;
+  }
+
+  // Which local model this zip grades with, and the profile/manifest that pin it.
+  // Kept per assignment for the same reason as the block above: the zip's own
+  // config decides, not the course's default.
+  env.ORALSCALE_LOCAL_MODEL_KEY = String(one.assignments[aid].localModel
+    ?? one.defaults?.localModel ?? LOCAL.DEFAULT_MODEL);
+  if (!genaiHere && !LOCAL.MODELS.includes(env.ORALSCALE_LOCAL_MODEL_KEY))
+    throw Error('Unknown local model: '+env.ORALSCALE_LOCAL_MODEL_KEY);
+  if (!genaiHere) {
+    if (env.ORALSCALE_LOCAL_MODEL_KEY === LOCAL.DEFAULT_MODEL) {
+      const check = spawnSync('python3', ['-c',
+        'import json,sys,localcontext; b=json.load(open(sys.argv[1])); [localcontext.criteria(q) for q in b["questions"]]', bankPath],
+        { env:{...process.env,PYTHONPATH:srcDir}, encoding:'utf8' });
+      if (check.status !== 0) throw Error('Invalid local grading context: '+check.stderr);
+    }
+    one.assignments[aid].localModel = env.ORALSCALE_LOCAL_MODEL_KEY;
+    one.assignments[aid].localGradingProfile = env.ORALSCALE_LOCAL_MODEL_KEY === LOCAL.DEFAULT_MODEL
+      ? LOCAL.PROFILE : 'qwen25-legacy-lines-v1';
+    fs.writeFileSync(path.join(srcDir, 'course.json'), JSON.stringify(one, null, 2)+'\n');
+    fs.writeFileSync(path.join(srcDir, 'local-profile.json'), JSON.stringify(
+      LOCAL.manifest(srcDir, aid, env.ORALSCALE_LOCAL_MODEL_KEY, bankPath), null, 2)+'\n');
+  } else fs.rmSync(path.join(srcDir, 'local-profile.json'), { force:true });
 
   env.ORALSCALE_ASSIGNMENT = aid;
   console.log(`\n── ${aid} ──────────────────────────────────────────────`);
+  if (genaiAssignments.length && localAssignments.length) {
+    console.log(genaiHere
+      ? '   backend genai: the GenAI key IS in this zip, and the local model is not bundled.'
+      : '   backend local: the local model is bundled, and the GenAI key is NOT in this zip.');
+  }
   const r = spawnSync('bash', ['build.sh'], {
     cwd: path.join(ROOT, 'autograder'), env, stdio: 'inherit',
   });
@@ -583,12 +825,19 @@ for (const aid of buildable) {
   fs.mkdirSync(artifactDir, { recursive: true });
   fs.renameSync(zip, out);
   fs.chmodSync(out, 0o600);
-  built.push({ aid, out, kb });
+  built.push({ aid, out, kb, genai: genaiHere });
 }
 
 console.log(`\n✅ ${built.length} autograder(s) in ${path.relative(ROOT, artifactDir)}/`);
 for (const b of built) {
   console.log(`   ${path.basename(b.out).padEnd(52)} ${String(b.kb).padStart(4)} KB   → upload to: ${b.aid}`);
+}
+if (regradeVariant) {
+  console.log(`\n   ⚠  This is a REGRADE VARIANT ("${regradeVariant}"). The zip that graded the`);
+  console.log('      first pass is still in place under its own name — this one does not');
+  console.log('      replace it. Uploading this to the live Gradescope assignment and');
+  console.log('      regrading re-marks EVERY submission, including ones already returned.');
+  console.log('      Compare the new marks against the recorded ones before you publish them.');
 }
 console.log('\n   Each zip grades exactly the assignment named in its filename, and nothing is');
 console.log('   inferred from the Gradescope title — so upload the one whose name matches.');
@@ -602,14 +851,28 @@ console.log('     students re-activate an earlier one from Submission History (I
 // student problem rather than a configuration one, so they are printed here as
 // well as in setup.sh and the teacher guide. An instructor who reads only one of
 // the three should still get them.
-if (localAssignments.length > 0) {
-  console.log('  3. Autograder Settings → container **4.0 CPU / 6.0 GB RAM**.');
-  console.log('     Required for the bundled local grader as well as speech recognition;');
-  console.log('     an undersized container cannot load the models reliably.');
-} else {
-  console.log('  3. Autograder Settings → container **2.0 CPU / 3.0 GB RAM**.');
-  console.log('     The 0.5 CPU / 0.75 GB default cannot even LOAD the speech model,');
-  console.log('     so every submission comes back with no transcript.');
+// Sized per ZIP, not per course: the local grader is bundled into the zips that
+// grade with it and nowhere else, so a genai zip in a mixed course does not need
+// the bigger container and a local one still does.
+{
+  const localBuilt = built.filter((b) => !b.genai).map((b) => b.aid);
+  const genaiBuilt = built.filter((b) => b.genai).map((b) => b.aid);
+  const big = ['  3. Autograder Settings → container **4.0 CPU / 6.0 GB RAM**.',
+    '     Required for the bundled local grader as well as speech recognition;',
+    '     an undersized container cannot load the models reliably.'];
+  const small = ['  3. Autograder Settings → container **2.0 CPU / 3.0 GB RAM**.',
+    '     The 0.5 CPU / 0.75 GB default cannot even LOAD the speech model,',
+    '     so every submission comes back with no transcript.'];
+  if (!genaiBuilt.length) big.forEach((l) => console.log(l));
+  else if (!localBuilt.length) small.forEach((l) => console.log(l));
+  else {
+    console.log('  3. Autograder Settings → container, and it differs by assignment:');
+    console.log(`     **4.0 CPU / 6.0 GB RAM** for ${localBuilt.join(', ')} — required for the`);
+    console.log('     bundled local grader as well as speech recognition.');
+    console.log(`     **2.0 CPU / 3.0 GB RAM** for ${genaiBuilt.join(', ')} — no local grader in`);
+    console.log('     those zips, but the 0.5 CPU / 0.75 GB default cannot even LOAD the speech');
+    console.log('     model, so every submission would come back with no transcript.');
+  }
 }
 console.log('  4. Autograder Settings → timeout **40 minutes**.');
 console.log('     Headroom for AI-grading rate limits — without it a throttled');

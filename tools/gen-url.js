@@ -158,7 +158,7 @@ async function fetchHealth(signer) {
 /* Refuse unless the live Worker is demonstrably ready for THIS link.
  * `want` is what we are about to stamp into the token, so a mismatch means the
  * deployed bundle is older than the course.json in front of you. */
-async function requireDeployed(signer, coursePath, course, assignmentId, want) {
+async function requireDeployed(signer, coursePath, course, assignmentId, want, secret) {
   const deploy = `  npm run deploy -- ${rel(coursePath)}`;
   if (/[<>]/.test(signer)) {
     die(`"signerUrl" in ${rel(coursePath)} is still the template placeholder:`, `  ${signer}`, '',
@@ -208,6 +208,33 @@ async function requireDeployed(signer, coursePath, course, assignmentId, want) {
       'disagree about identity — either students are asked for a key the Signer ignores,',
       'or they are not asked for the one it demands and cannot get past /reveal.');
   }
+  /* And the bank itself (INV-DEPLOY-7). The three checks above prove the Worker
+   * knows this assignment and agrees about its knobs; none of them can tell
+   * whether it is serving the QUESTIONS in front of you. A bank revised in place
+   * keeps its bankId and its question ids, so that drift is invisible to every
+   * other check here — and it is the drift that matters most, because the
+   * autograder resolves a submission's questions by id and would mark against
+   * the wrong rubric without erroring. */
+  const wantTag = want.bankDigest
+    ? P.bankTag(secret, course.courseId, assignmentId, want.bankDigest) : null;
+  const gotTag = (health.bankTag || {})[assignmentId];
+  if (wantTag && gotTag && gotTag !== wantTag) {
+    bad(`Stale bundle: the Worker is serving a DIFFERENT BANK for "${assignmentId}".`,
+      `  deployed bank revision: ${(health.bankRevision || {})[assignmentId] || '(none)'}`,
+      `  bank on this disk:      ${want.bankRevision || '(none)'}`,
+      'Same assignment, different questions. The link would work and students would',
+      'answer questions that are not the ones you just read — and if the Gradescope',
+      'zip was built from this disk, the grader would mark their answers against a',
+      'different question\'s rubric, by id, without erroring.');
+  }
+
+  if (wantTag && !gotTag) {
+    console.error('\n⚠️  This Worker does not report which BANK it is serving, so nothing here could');
+    console.error('   check that students get the questions in front of you (INV-DEPLOY-7). It was');
+    console.error('   deployed before that existed. Close the gap:');
+    console.error(`     npm run deploy -- ${rel(coursePath)}`);
+  }
+
   // Not fatal: the link works. But a graded quiz whose cooldown is not enforced
   // lets a student reroll until they like the question (INV-SEC-7), and this is
   // the last moment before the link is public.
@@ -315,8 +342,18 @@ async function choose(what, items, render, howToPass) {
   // No signerUrl means there is no deployment to check and no link a student
   // could use either; that case is called out loudly after the link is printed.
   if (signer) {
+    // Read the bank this course.json points at, so the preflight can ask the
+    // Worker whether it is serving THESE questions (INV-DEPLOY-7).
+    let bankDigest = null, bankRevision = null;
+    try {
+      const bp = path.resolve(path.dirname(coursePath), aCfg.bank);
+      const braw = fs.readFileSync(bp);
+      bankDigest = P.bankDigest(braw);
+      bankRevision = JSON.parse(braw.toString('utf8')).revision;
+    } catch { /* no readable bank here: the other checks still apply */ }
     await requireDeployed(signer, coursePath, course, assignmentId,
-      { requireKey: studentRef ? null : requireKey, questionsPerAttempt: nQ });
+      { requireKey: studentRef ? null : requireKey, questionsPerAttempt: nQ,
+        bankDigest, bankRevision }, secret);
   }
 
   let token, label, detail, equivalent;

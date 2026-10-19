@@ -1,6 +1,6 @@
 {
   "name": "oralscale",
-  "version": "0.1.0-alpha.2",
+  "version": "0.2.0-alpha.1",
   "description": "Scalable, privacy-preserving oral assessment using Purdue's teaching tools, built with MAGE.",
   "type": "commonjs",
   "scripts": {
@@ -19,7 +19,7 @@
     "test:e2e": "node tools/demo-e2e.js",
     "test:banks": "node tools/validate-all-banks.js",
     "test:course": "node tools/test-course-smoke.js --course courses/_testsuite/course.json --assignment starter",
-    "test": "node tools/test-unit.js && node tools/test-worker.js && node tools/demo-e2e.js",
+    "test": "node tools/test-unit.js && node tools/test-worker.js && node tools/demo-e2e.js && npm run test:local",
     "deploy": "bash tools/deploy.sh",
     "package": "node tools/build-autograder.js --zip",
     "test:worker": "node tools/test-worker.js",
@@ -29,7 +29,8 @@
     "guides:capture": "node tools/public-guides/capture.cjs",
     "guides:render": "node tools/public-guides/render.cjs",
     "test:guides": "node tools/public-guides/check.cjs",
-    "test:guides:release": "node tools/public-guides/check.cjs --release"
+    "test:guides:release": "node tools/public-guides/check.cjs --release",
+    "test:local": "python3 tools/test-runtime-timing.py && python3 tools/test-local-profile.py && python3 tools/test-debug-identity.py && python3 tools/test-feedback-footer.py && node tools/test-local-package.js"
   },
   "license": "MIT",
   "author": "David I. Inouye (https://www.davidinouye.com)",

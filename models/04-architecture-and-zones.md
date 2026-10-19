@@ -89,3 +89,21 @@ satisfies "stateless/sessionless but may have a small database."
   `pii.py` (INV-PRIV-4), `localmodel.py` + `calibration.py` (INV-GRADE-1/2/3),
   `grade.py` (backend choice, batching, rate-limit backoff)
 - Grader calibration harness: [tools/eval/](../tools/eval/) + [tools/calibrate-grader.py](../tools/calibrate-grader.py)
+
+## Local runtime profile (INV-LOCAL-1/2)
+Qwen3.5 4B uses a pinned standalone llama-server CPU process on loopback, owned and
+released by the adapter. Image setup downloads verified weights/runtime; grading is
+offline. Whisper release precedes server load. 4096 tokens, one slot, no prompt cache,
+900 output tokens and thinking off bound the runtime. Legacy Qwen2.5 pins retain the
+in-process runtime. `local-profile.json` records each package's effective profile and
+source hashes; instructor-authored `gradingContext` supplies portable per-question context.
+
+### Shared workstation weights (INV-LOCAL-1)
+For local checks, resolve the exact manifest-pinned Qwen GGUF from the user's
+Hugging Face Hub cache (`HF_HUB_CACHE`, or `HF_HOME/hub`, default
+`~/.cache/huggingface/hub`). An explicit `ORALSCALE_LOCAL_PATH` wins and a missing
+explicit path fails closed. Packaged image weights still take precedence over the
+workstation cache. Resolution is offline and never substitutes another revision,
+model, quantization, inference engine, or grading prompt. Download public weights
+into the shared cache only; course folders retain configs/results, not copies of
+weights. Released Gradescope images and archives remain self-contained and unchanged.

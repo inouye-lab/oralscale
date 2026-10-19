@@ -16,7 +16,7 @@
   "assignments": {
     "demo-quiz": {
       "shortTitle": "Demo Quiz",
-      "shortTitleNote": "REQUIRED on every assignment (INV-USE-1). The short, TOPIC-FREE label the app shows above the quiz and the only assignment text stamped into a student's link. It is display only \u2014 nothing routes, grades or selects questions on it. Keep it to the quiz number: the assignment's `title` and its id both name the week's subject, and printing either one puts a hint above the quiz and inside the link. It also has to stay true if the quiz is re-scoped or becomes a review. Matching the Gradescope assignment name is useful but not required. gen-url.js and check-course-safety.js both refuse without it.",
+      "shortTitleNote": "REQUIRED on every assignment (INV-USE-1). The short, TOPIC-FREE label the app shows above the quiz and the only assignment text stamped into a student's link. It is display only — nothing routes, grades or selects questions on it. Keep it to the quiz number: the assignment's `title` and its id both name the week's subject, and printing either one puts a hint above the quiz and inside the link. It also has to stay true if the quiz is re-scoped or becomes a review. Matching the Gradescope assignment name is useful but not required. gen-url.js and check-course-safety.js both refuse without it.",
       "week": "try",
       "title": "Demo quiz — try OralScale",
       "note": "The PUBLIC trial assignment behind oralscale-demo.pages.dev. Open (no quiz key), because asking a stranger evaluating the tool to mint themselves a credential first is where they stop. Real courses must leave requireAccessKey true — the link is public, so without a key anyone can mine the bank (INV-SEC-8). Nothing here is assessed and the bank is twelve generic questions, so there is nothing to protect.",
@@ -57,27 +57,50 @@
     "scoreAggregationNote": "How several questions combine: 'mean', 'min' (the weakest answer decides - for competencies that must each be demonstrated), or 'dropLowest' (scores the best N-1 of N; the dropped question's feedback is still shown, marked as not counting).",
     "bands": null,
     "bandsNote": "THE WHOLE GRADING LADDER, if you want your own. An ordered object from band name to either a number (its share of the question) or {\"score\": 0.8, \"meaning\": \"what this band looks like\"}. Order is the ladder, highest first, and the scores must not climb as you go down it. Two rungs minimum; names are letters, digits, _ and - only. null uses the engine's five: full 1.0, strong 0.9, partial 0.8, weak 0.7, none 0.0. USE bandScores INSTEAD if you only want to re-price those five - it keeps the grader prompt wording that was actually measured, which a custom ladder cannot (yours is generated from your own `meaning` strings). If you define your own ladder, write your banks' `scoringBands` with the same names: a description for a band the grader cannot choose is dropped. An unusable ladder is rejected WHOLE and the default is used.",
-    "scoring": null,
-    "scoringNote": "HOW A MARK IS COMPUTED (INV-GRADE-10). null or \"bands\": the grader picks one of the bands above. \"points\": the grader instead judges EVERY required and optional point as stated / partly / absent / contradicted, quoting the student, and lists any false claim the student left uncorrected; the code then does the arithmetic. Required points are worth 2 and optional points 1; partly earns half, and an uncorrected contradiction costs the point's weight. With base = 2 x the required points: below base is weak, base is partial, base+1 is strong, base+2 is full. An answer that conveys no required point is weak at most, and an uncorrected false claim caps it at partial. A slip the student corrects during the answer is never penalised. Tune with {\"mode\":\"points\",\"requiredWeight\":2,\"optionalWeight\":1,\"strongAt\":1,\"fullAt\":2,\"falseClaimCap\":\"partial\"}. The band is priced by the ladder above, which must keep the five standard names. Never switch a released assignment (INV-DEPLOY-6).",
+    "scoring": {
+      "mode": "points",
+      "requiredWeight": 2,
+      "optionalWeight": 1,
+      "novelWeight": 1,
+      "novelCap": 3,
+      "partlyFactor": 0.5,
+      "curveRounding": "up",
+      "table": [
+        0,
+        0.7,
+        0.85,
+        0.9,
+        0.92,
+        0.95,
+        0.97,
+        1.0
+      ],
+      "falseClaimCapScore": 0.85,
+      "noCoreCapScore": 0.7
+    },
+    "scoringNote": "HOW A MARK IS COMPUTED (INV-GRADE-10). The demo uses the RECOMMENDED points curve, the same block courses/_template/course.json ships. The grader judges EVERY required and optional point as stated / partly / absent / contradicted, quoting the student, lists any uncorrected false claim, and may credit a correct point the key did not list ('novel', capped at novelCap); the code then does the arithmetic. Required points are worth 2, optional and novel points 1, partly earns partlyFactor of the weight. The total is read off `table` by index (0 points -> 0, 1 -> 0.70, 2 -> 0.85, ...): one required point alone is 0.85, two are 0.92, extra depth climbs to 1.00. curveRounding \"up\" gives a total between two rungs the higher one (INV-GRADE-11). falseClaimCapScore caps an answer with an uncorrected false claim; noCoreCapScore caps one that conveyed no required point. A slip the student corrects is never penalised. Set null or \"bands\" for the older band ladder (the grader picks a band, priced by `bands`/`bandScores`); \"points\" without a `table` keeps band output. Never switch a released assignment (INV-DEPLOY-6).",
     "bandScores": null,
     "bandScoresNote": "What each grading band is WORTH, as a fraction of the question. null uses the engine default: full 1.0, strong 0.9, partial 0.8, weak 0.7, none 0.0 - an even tenth per rung, with the single cliff between `weak` (on topic, nothing false) and `none` (wrong about the central idea, or no answer). Set all five, in that order, to price the scale for your course - a table that is incomplete, non-numeric, outside 0-1, or that ranks a lower band above a higher one is rejected whole and the default is used, because a half-applied curve would take part of a student's mark from each scale. You choose what a band is worth; you cannot invent or delete a band, since the five names are baked into both graders' prompts and parsers.",
     "showQuestionMeta": false,
     "showQuestionMetaNote": "Whether the small line above each question naming its TOPIC, its PRINCIPLE and its difficulty is served to the browser. FALSE, which is the code default and what every new assignment gets. It is off because `principle` states the durable idea the question is testing, printed directly above the question — on a question like 'why does a coin that has landed heads five times still have a fifty-fifty chance?' it would read 'past outcomes do not change an independent process', which is the answer. When this is false the fields are not merely hidden by the app: tools/build-worker.js leaves them out of the deployed bundle and the Signer never sends them, so there is nothing in the tab to read (INV-COURSE-5). Set it true PER ASSIGNMENT only to keep a quiz that is already live looking exactly as it did when students started it.",
     "showTranscript": true,
     "showTranscriptNote": "Whether the student sees the automatic transcript of their own recording.",
+    "feedbackFooter": "A good and correct answer will generally earn about 90%. To get more points, you have to go beyond what the question explicitly asks.",
+    "feedbackFooterNote": "Optional plain-text note appended to the bottom of EVERY question's feedback, after the grader's narrative (INV-USE-7). Under the curve a complete answer to the question as asked earns about 0.92, so this says so. null shows nothing. Set it per assignment to override. It never changes a mark.",
     "allowPrivateCode": true,
     "allowPrivateCodeNote": "Offer the 'private code' email opt-out. Only relevant when requireAccessKey is false - key mode already sends no email.",
     "difficultyMixNote": "Optional per-slot difficulty, e.g. [\"intro\",\"core\",\"stretch\"] for a warm-up/core/stretch trio. Null or absent draws every question from the whole bank; a difficulty absent from the bank falls back to the whole bank rather than failing the attempt.",
     "gradingBackend": "local",
     "gradingBackendNote": "Which grader scores the answers. 'local' (the default) runs a small open-weights model INSIDE the Gradescope container, so the transcript never leaves it. 'genai' sends the de-identified, PII-redacted transcript to Purdue GenAI Studio, which grades better - but GenAI Studio carries no FERPA certification, so choosing it is the instructor's decision, not ours. 'heuristic' is keyword coverage only: deterministic, needs nothing, and grades markedly worse - choose it deliberately or not at all. THERE ARE NO FALLBACKS (INV-GRADE-1): the grader you name here is the one used, and if it cannot run, the affected submissions are NOT graded and are flagged for you to regrade. Two students who said the same thing must not be measured by different methods because one of them submitted during an outage.",
-    "gradingQualityNote": "GRADING QUALITY. The local grader is qwen2.5-3b and there is no model choice: eleven alternatives from 1.5B to 9B were measured against it (Qwen2.5/3/3.5, Gemma 3/4, Phi-4-mini, Llama 3.2, Ministral) and none won — bigger models grade WORSE here because they are generous, which shows up as ties. It needs 2.07 GB peak in the container, 66% headroom, and its memory does NOT grow with questionsPerAttempt. IF YOU WANT BETTER GRADING, the choice is the BACKEND, not the model: Purdue GenAI (qwen3.6:27b) marks NOTICEABLY BETTER than the local model on every metric measured. The cost is locality — the de-identified, PII-redacted transcript leaves the Gradescope container to a service with no FERPA certification, which is why 'local' is the default. Set gradingBackend='genai' to accept that trade. See docs/reference/GRADER-BACKENDS.md.",
+    "gradingQualityNote": "Default local profile qwen35-context-off-v1: Qwen3.5 4B Q4_K_M, thinking disabled, one question at a time. Evidence is points-mode synthetic testing; qualify each new bank. See docs/reference/LOCAL-GRADING.md. Explicit qwen2.5-3b retains the historical grader.",
     "scoreBonus": 0,
     "scoreBonusNote": "POINTS added to every submission. Normally 0. Set it PER ASSIGNMENT (not here) when something went wrong on your side - a bad question, a grader changed mid-term, an outage - and the fair remedy is to give the whole cohort a mark back rather than re-grade by hand. Uniform by design: a remedy that lands differently on different students re-creates the unfairness it is meant to repair. Capped at maxPoints unless scoreBonusAllowOverMax is true. Students are TOLD an adjustment was applied.",
     "scoreBonusReason": "",
     "scoreBonusReasonNote": "Why the bonus was given. Shown to students and recorded in the instructor output. A bonus with no recorded reason is indefensible six weeks later.",
     "scoreBonusAllowOverMax": false,
     "supportChannel": "Piazza",
-    "supportChannelNote": "Where a student is told to ask for help when something fails on OUR side — named in the message they see if a submission could not be graded. Use whatever your course actually reads."
+    "supportChannelNote": "Where a student is told to ask for help when something fails on OUR side — named in the message they see if a submission could not be graded. Use whatever your course actually reads.",
+    "localModel": "qwen3.5-4b"
   },
   "signerUrl": "https://oralscale-demo-signer.dinouye.workers.dev"
 }

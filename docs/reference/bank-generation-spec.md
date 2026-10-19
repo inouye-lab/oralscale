@@ -101,8 +101,18 @@ than stop at the minimum. Either way the rule for you as an author is identical:
 the question asks, `bonusPoints` is depth beyond it, and nothing a student is *required* to say may
 be absent from the prompt.
 
-The optional points a student did **not** make are reported back to them as *what would have made
-this answer stronger* — so write them as things worth saying, not as filler.
+In BAND mode the optional points a student did **not** make are reported back to them as *what
+would have made this answer stronger* — so write them as things worth saying, not as filler. In
+POINTS mode they are not shown to the student at all (INV-GRADE-9), but they still decide how a
+strong answer climbs, and the grader still reads them to recognise one.
+
+**A course on a CURVE asks one more thing of you** (`scoring.table`, INV-GRADE-10): write
+`keyPoints` so that **any one of them, said correctly, is already a sound if simplified answer**.
+The curve prices a single core point as a good mark and both as a complete one, which only makes
+sense if each genuinely answers the question. If one point is meaningless without another, they are
+one point, not two. Such a course also credits substantive correct points the student made that are
+on **neither** list, so a bank does not have to anticipate every good answer — which is the
+pressure that makes authors overfill `keyPoints` in the first place.
 
 ### Why the optional fields earn their keep
 They exist because of a measured result, not a hunch (`tools/eval/`, and the report in
@@ -127,6 +137,11 @@ writing them down stops a grader awarding credit for the confident wrong answer.
    markup (HTML shows as literal characters) and none of them survives being read aloud.
    Remember the question is *spoken*: a wall of display math usually belongs on a written
    assignment instead. `validate-bank.js` warns about all of these.
+   The renderer supports a subset of LaTeX. Sizing and spacing macros such as `\big`, `\bigl`
+   and `\bigr`, as well as `\mid` and the starred `\operatorname*`, are printed to the
+   student as raw source. Use plain `/`, `(`, `|` and `\operatorname` instead.
+   `tools/bank-worksheet.js` renders every prompt through the student app's own parser, so
+   check the worksheet: an unsupported macro shows up there exactly as a student would see it.
 1. **~100 questions** (90–110 acceptable). Unique `id`s. No near-duplicate prompts.
 2. **Answerable aloud in 2–3 minutes** by a student who understands the material (5 min absolute
    max). No question that needs writing or deriving on paper, or running code — not because
@@ -161,6 +176,13 @@ writing them down stops a grader awarding credit for the confident wrong answer.
      notational question without asking anyone to read a formula aloud.
 
 2b. **The prompt must be SELF-CONTAINED.** No retrieval step before the reasoning step.
+
+   **Separate the setup from the ask, and make clear what the student should explain.**
+   Audit every prompt for first-read clarity, including stretch questions. Introduce the objects
+   and needed assumptions before the question; break up dense clauses and abstract noun chains.
+   Keep necessary technical meaning without supplying the answer. After a rewrite, check that
+   the required criteria, reference answer and grading context still answer the revised ask.
+   See the [readability guidance](../guides/QUESTION-DESIGN-GUIDE.md#make-the-task-clear-on-the-first-reading).
    - *Name the referents.* "The two approaches we contrasted", "the four questions to ask of a new
      method" — each makes the student first remember WHICH things are meant, and only then reason.
      Someone who has the understanding and blanks on the label scores zero on a question that was
@@ -247,3 +269,12 @@ for every item to also have `principle` + `kind`.
 **Read the warnings, especially the required-points one.** It prints the mean number of required
 points per question; if that number is much above two, the bank is about to mark a cohort down for
 things it never asked them.
+
+## Context for the standard local grader
+See [LOCAL-GRADING.md](LOCAL-GRADING.md) for optional `gradingContext` metadata and
+the exact `pointDecisions`/`systemGuidance` contract. Draft context from course sources,
+verify mathematical claims and partial-credit boundaries, and make new listed criteria
+semantically disjoint. Existing overlapping criteria may share supporting evidence; a
+concrete example cannot earn both listed and novel credit. Qualify clean/messy pairs
+and the full raw-point scale before release. Enhancing a deployed key belongs in a
+versioned alternative bank with unchanged student-facing questions.

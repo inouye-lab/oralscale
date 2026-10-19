@@ -41,6 +41,9 @@ const ALLOWED = [
 
 function courseFiles(dir, out = []) {
   if (!fs.existsSync(dir)) return out;
+  const own = path.join(dir, 'course.json');
+  if (fs.existsSync(own)) { out.push(own); return out; }
+  // Do not discover an extracted package or research snapshot as another course.
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
     if (e.isDirectory()) courseFiles(p, out);
@@ -93,6 +96,9 @@ function main() {
     try { course = JSON.parse(fs.readFileSync(file, 'utf8')); }
     catch (e) { findings.push({ rel, what: `is not valid JSON (${e.message})` }); continue; }
 
+    if (Object.prototype.hasOwnProperty.call(course, 'debugAutograder')) {
+      findings.push({rel, what:'contains DEBUG package metadata; keep it out of source course configuration'});
+    }
     const defaults = course.defaults || {};
     const open = [];
     for (const [aid, a] of Object.entries(course.assignments || {})) {

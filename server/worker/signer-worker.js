@@ -17,6 +17,14 @@ function b64urlToBytes(str) { str = str.replace(/-/g, '+').replace(/_/g, '/'); s
 async function hmacKey(secret) { return crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']); }
 async function signToken(secret, obj) { const p = JSON.stringify(obj); const k = await hmacKey(secret); const sig = new Uint8Array(await crypto.subtle.sign('HMAC', k, enc.encode(p))); return b64urlFromBytes(enc.encode(p)) + '.' + b64urlFromBytes(sig); }
 async function verifyToken(secret, token) { if (typeof token !== 'string' || token.indexOf('.') < 0) throw new Error('malformed'); const [p, s] = token.split('.'); const pb = b64urlToBytes(p); const k = await hmacKey(secret); const ok = await crypto.subtle.verify('HMAC', k, b64urlToBytes(s), pb); if (!ok) throw new Error('bad signature'); return JSON.parse(dec.decode(pb)); }
+/* Keyed tag for a bank digest (INV-DEPLOY-7). Must agree byte-for-byte with
+ * bankTag() in server/lib/protocol.js — the Node tooling computes the same value
+ * from the bank file on disk and compares. */
+async function bankTag(secret, courseId, assignmentId, digest) {
+  const b = await hmacBytes(secret, `bank:v1:${courseId}:${assignmentId}:${digest}`);
+  let o = ''; for (let i = 0; i < 8; i++) o += b[i].toString(16).padStart(2, '0');
+  return o;
+}
 async function hmacBytes(secret, str) { const k = await hmacKey(secret); return new Uint8Array(await crypto.subtle.sign('HMAC', k, enc.encode(str))); }
 
 // Bookend challenge codes (v4) — mirrors protocol.js deriveCode. Six digits, one at
@@ -359,6 +367,25 @@ export default {
         accessKeyRequired: Object.fromEntries(ids.map((id) => [id, requireKeyFor(id)])),
         accessLogEnabled: !!env.DB,
         questionsPerAttempt: Object.fromEntries(ids.map((id) => [id, questionsFor(id)])),
+        /* WHICH BANK IS ACTUALLY DEPLOYED (INV-DEPLOY-7).
+         *
+         * `assignments` above says which assignments exist; these say which
+         * QUESTIONS are behind them. Without that, a bank revised in place —
+         * same bankId, same question ids — is invisible from outside, and a
+         * Worker and a Gradescope zip built from different revisions mis-grade
+         * silently instead of failing, because the grader resolves a
+         * submission's questions BY ID.
+         *
+         * `bankRevision` is the human-readable string an instructor reads.
+         * `bankTag` is HMAC(Secret, digest-of-the-bank-file), NOT the digest:
+         * this endpoint is public, and a plain digest would let anyone holding a
+         * leaked bank confirm it is the real one. The tag verifies against
+         * tools/verify-deployment.js, which has the Secret, and tells everybody
+         * else nothing. Absent when the Worker has no Secret configured. */
+        bankRevision: Object.fromEntries(ids.map((id) => [id, (BANKS[id] || {}).revision])),
+        bankTag: secret ? Object.fromEntries(await Promise.all(ids.map(async (id) =>
+          [id, (BANKS[id] || {}).bankDigest
+            ? await bankTag(secret, COURSE.courseId, id, BANKS[id].bankDigest) : undefined]))) : undefined,
         warning: warnings.length ? warnings.join(' ') : undefined }, origin);
     }
     if (!secret) return json(500, { error: 'signer misconfigured: no secret' }, origin);

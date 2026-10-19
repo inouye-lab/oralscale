@@ -51,17 +51,22 @@ survives students comparing notes.
 Required per question: `id`, `prompt`, `keyPoints`. Also fill `topic`, `principle`, `difficulty`,
 `kind`, and `rubric`.
 
-**`keyPoints` is REQUIRED-ONLY (INV-GRADE-9).** Put in it only what the question *asks for*: points
-without which the answer is wrong or has not answered the question as stated. Two or three, four at
-the most — `validate-bank.js` warns above four. Everything that merely makes an answer stronger
-goes in `bonusPoints`, which both graders are told may never cost a mark. The test for each point:
-would an answer without it be **wrong**, or merely **weaker**? And anything you make required must
-be explicitly asked for in the prompt — a student cannot be marked down for not answering something
-they were not asked.
+**`keyPoints` is REQUIRED-ONLY (INV-GRADE-9): one core point per explicit ask in the prompt**, so
+one or two per question — `validate-bank.js` warns above four. Each must be a substantive answer
+that, said correctly on its own, is already a sound if simplified answer. Everything that merely
+makes an answer stronger goes in `bonusPoints`, which both graders are told may never cost a mark.
+The test for each point: would an answer without it be **wrong**, or merely **weaker**? And
+anything you make required must be explicitly asked for in the prompt — a student cannot be marked
+down for not answering something they were not asked. The recommended rules (points curve, hard
+limits on prompts, style) are Part B of the course's `question-design.md`; a new course copies it
+from `courses/_template/question-design.md`.
 
-**Fill the three optional fields too** — `referenceAnswer`, `scoringBands`, `commonErrors`. They
-are optional in the schema and near-mandatory in practice: they are the measured difference
-between a small local grader and a large one (`docs/project/STATUS.md`, `tools/eval/`).
+**Fill `referenceAnswer`, `commonErrors`, `evidence` and `gradingContext` too.** They are optional
+in the schema and near-mandatory in practice: they are the measured difference between a small
+local grader and a large one (`docs/reference/LOCAL-GRADING.md`, `tools/eval/`). `gradingContext`
+gives the local grader a checked explanation and one sufficient example per point, with IDs `R1…`
+matching `keyPoints` and `O1…` matching `bonusPoints` in order. A points-mode bank may omit
+per-item `scoringBands`. `courses/demo/banks/general-stem.json` is a worked example.
 
 Aim for a spread of `difficulty` (roughly 25 / 50 / 25 intro / core / stretch) and a mix of `kind`.
 A bank that is all `explain` gets predictable fast.
@@ -98,7 +103,8 @@ numbers.)*
 node tools/validate-bank.js courses/<courseId>/banks/<bank>.json
 ```
 
-Fix and repeat until clean. Then check the whole course:
+Fix and repeat until clean. Build the instructor review worksheet with
+`node tools/bank-worksheet.js <bank.json>`. Then check the whole course:
 
 ```bash
 node tools/validate-all-banks.js courses/<courseId>/banks

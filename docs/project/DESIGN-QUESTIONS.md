@@ -323,7 +323,7 @@ little can we learn about them while they do it? 🔵
 
 ## E. Portability
 
-**E1. Multi-course support.** Must be portable to other courses; do ai-curriculum first.
+**E1. Multi-course support.** Must be portable to other courses; start with the pilot course.
 - Best guess: all course specifics live in `banks/<courseId>/<week>.json` + a `course.json` config; nothing course-specific in code.
 - Decision: _pending_ 🟢
 
@@ -952,3 +952,414 @@ remains instructor-verified against Gradescope records, not automatically verifi
   updates. `npm run test:guides:release` is blocking, and CI runs it on `v*` tags. Structural
   errors still fail in both modes. The FAQs are kept high-level, so spec changes rarely falsify
   them; a per-commit sign-off was friction without protection.
+
+### The curve, and credit for points nobody listed (2026-09-15, INV-GRADE-9/10)
+
+- **Decision (instructor):** 🔵 From Quiz 3 on the bands no longer price the mark. Points are summed
+  (core 2, supporting 1, half for `partly`) and read off a curve:
+  `0 / 0.70 / 0.85 / 0.90 / 0.92 / 0.95 / 0.97 / 1.00` for 0…7+ points, a total between two entries
+  taking the lower. **One core point alone is 0.85**, both are 0.92, and the rest of the scale is
+  depth. Why: a student who answers correctly, even simply, should be at a good mark, and the top
+  of the scale should measure how strong the answer was rather than how much of our list they said.
+- **Decision (instructor):** 🔵 The listed points are **validated, not exhaustive**. The grader is
+  asked separately for substantive, correct points the student made that are on neither list — an
+  example of their own, or a correct route the bank did not anticipate — worth 1 each (half if
+  half-developed), capped at **3 per answer**. A `wrong` one is a false claim. Unquoted novel points
+  count neither way. Why: a key-point scheme otherwise rewards reciting our sentences, and the cap
+  exists because a grader that can invent credit can be talked into inventing it.
+- **Decision (instructor):** 🔵 An uncorrected false claim caps the answer at **0.85** — on a curve
+  this flat, the −1 alone would make a confident misconception cost a tenth of a mark.
+- **Decision (instructor):** 🔵 An answer conveying **no core point** is capped at **0.70**, so
+  supporting and novel credit can never substitute for answering the question.
+- **Decision (instructor):** 🔵 Students are **not** told which listed ideas they did not mention.
+  This reverses the 2026-09-09 rule: the list read as a tally of what they lost, and several points
+  are not derivable from the prompt, so it taught recitation. The record stays instructor-only.
+- **Decision (instructor):** 🔵 **Quiz 2 is to be regraded** under the new scheme with a
+  **never-lower** guarantee (each student keeps the better of their recorded mark and the new one).
+  Quiz 0 and 1 stay on bands. Open: the regrade is a rerun of a non-deterministic grader, so the
+  never-lower comparison has to be applied from the recorded marks, not assumed.
+- **Best guess:** bank authoring adds one rule — write `keyPoints` so that any one of them, said
+  correctly, is already a sound if simplified answer. Points that are meaningless apart are one
+  point. `validate-bank.js` still warns above four.
+
+### A `partly` is half but rounds up, and the Quiz 2 regrade is frozen (2026-09-16)
+
+- **Decision (instructor), superseded within the day:** 🔵 `partlyFactor: 1`, pricing a `partly` as
+  a whole point. Reverted because it made an answer that gestures at every point score exactly what
+  a crisp one does — more thumb on the scale than intended.
+- **Decision (instructor):** 🔵 **`partlyFactor` stays 0.5 and `curveRounding` is `"up"`.** A total
+  between two rungs takes the higher one. This makes a half-made point *optimistic* rather than
+  pessimistic without making it free: two partly-made core points still total 2 and buy what one
+  whole core point buys, so vagueness still costs, but 3.5 → 0.92 and a lone `partly` can never
+  round away to nothing. Rounding down was the real problem — a 0.5 total was indistinguishable
+  from silence, while the feedback told the student the grader had seen something.
+- **Decision (instructor):** 🔵 The Quiz 2 `curve-v2` regrade zip is **frozen**
+  (sha256 `f7c6f243b89a10ae…`): every submission is being re-marked against it, so `--regrade`
+  now refuses to rebuild it without `--repackage-frozen`. It predates `partlyFactor` and therefore
+  prices a `partly` at half. That divergence from Quiz 3 is deliberate — a regrade in flight must
+  not be re-cut to pick up a later change, because half the cohort would be marked by other code.
+- **Open:** the never-lower comparison for Quiz 2 is still manual. The zip cannot know the marks
+  students already hold.
+
+### Quiz 3 was ungraded, and how much context a small grader is given (2026-09-17)
+
+- **Observed.** The released `quiz-03` zip (backend `genai`) graded **nothing**. Of the first four
+  submissions: two failed with repeated read timeouts and HTTP 400 rate limits from
+  `genai.rcac.purdue.edu` (one logged 4 throttled replies and 4.9 min of backoff before its
+  deadline passed), one crashed the container outright, and one failed integrity on a boundary code
+  that was never transcribed. INV-GRADE-1 turned all of that into `REGRADE REQUIRED` and a 0 in
+  Gradescope rather than a quiet fallback, which is correct and is also why four students currently
+  hold a zero they did not earn.
+- **Decision (best guess, proceeding):** 🟢 Build a **regrade variant** —
+  `regrade: {id: "local-qwen", gradingBackend: "local"}` — rather than flipping the course over.
+  A second zip under its own name grades the whole cohort with one grader and leaves the released
+  artifact alone. `--regrade` was scoring-only until now; it accepts `gradingBackend` as of this
+  change (INV-DEPLOY-6), and the override is applied *before* the build environment is derived so
+  the zip that asks for the local model is the zip that carries it.
+- **Decision (instructor, 2026-09-17):** 🔵 The variant zip is **built but not uploaded**. Decide
+  once the marks it produces can be compared against what GenAI would have given. The local model
+  marks more harshly, so regrading Quiz 3 this way puts it on a different scale from Quiz 1 and
+  Quiz 2 — the same commensurability problem the Quiz 2 regrade raised.
+- **And it is not ready anyway.** 🔴 Measured over 24 answers, the local grader marked **every
+  optional point `absent`** — 72 of 72 — including on answers that state all three `bonusPoints`
+  nearly verbatim. On this bank it therefore caps every student at 0.92 and cannot reach the
+  curve's 0.95/0.97/1.00 rungs at all. It also returns the bank's own `keyPoints` wording as
+  `evidence` rather than the student's words, which defeats the checkability INV-GRADE-10's
+  quote requirement exists for. Fix both before this zip grades anyone.
+
+**G. How much context does the grader get per question?** The bank is far richer than either
+grading prompt reads. Every `quiz-03` item carries `rubric`, `keyPoints`, `bonusPoints`,
+`referenceAnswer`, `scoringBands`, `commonErrors` and an `evidence` array of verbatim lecture and
+slide quotes — and **points mode sends only the prompt, the rubric, the point list and
+`commonErrors`**. `referenceAnswer`, `scoringBands` and `evidence` reach the model on the *band*
+path and not on the curve, which is the path Quiz 3 onward actually uses.
+- This matters most to the small local model, and `localmodel.py` already has the measurement:
+  removing the rubric, `commonErrors` or the bank's band text made it *worse* (MAE 0.327 and 0.297
+  against 0.117). The bank's richness earns its keep, and points mode is currently not spending it.
+- **Decision (instructor, 2026-09-17):** 🔵 Add **`referenceAnswer` and `evidence`** to the points
+  prompt, and measure `referenceAnswer` alone before `referenceAnswer` + `evidence` so each field's
+  contribution is separable. Implemented as `localmodel.bank_context()`, a single hook the
+  benchmark substitutes, so the comparison is the only thing that differs between runs.
+- **Decision (instructor, 2026-09-17), superseding the commensurability worry:** 🔵 **The two
+  prompts MAY diverge, and the local one may be significantly richer.** The fairness property
+  INV-GRADE-1 protects is that every submission for an assignment is graded by the **same**
+  backend — so no student is ever measured against another by a different grader, and two backends
+  worded differently is not unfairness but two graders, only one of which runs on a given quiz.
+  The remote 27B can be trusted to know what a good answer looks like; a 3B cannot, and should be
+  told more.
+- **Measured, 2026-09-17: it helps, and the win is in RELIABILITY rather than in accuracy.** 🔵
+  `tools/eval/points-bench.py`, 102 constructed answers per arm, same fixtures, same model, the
+  only difference being the two fields:
+
+  | | bare | + `referenceAnswer` + `evidence` |
+  |---|---|---|
+  | `readable` | 91.2% | **96.1%** |
+  | false claims caught | 4/6 | **6/6** |
+  | `scoreErr` (signed) | +0.049 | **+0.013** |
+  | `messyCost` | +0.000 | **−0.016** |
+  | `under` / `over` | 0.0% / 47.7% | 0.2% / 48.0% |
+  | `optCredit` | 100% | 100% |
+
+  Verdict accuracy is unchanged (`exact` 52.3% against 51.8%, `over` within half a point). What
+  moves is everything around it: **half the unreadable replies disappear** — which under
+  INV-GRADE-1 is half the lost submissions — every planted misconception is caught instead of two
+  thirds, the marks land closer to what the answers earn, and the messy twins stop costing anything
+  at all. For 219 tokens and no memory (K), that is a clear buy.
+- **Why reliability rather than accuracy is the plausible mechanism:** the extra text does not teach
+  the model to discriminate between points — nothing did, see the capability limit below — but it
+  does give it a worked example of what a good answer to THIS question looks like, and something to
+  check a suspected falsehood against. Both are jobs a 3B has no background knowledge for.
+**H. The optional-point framing.** 🔵 **Decision (instructor, 2026-09-17): take the scoring out
+and still ask for the judgement.** `points_block` labelled optional points "validated depth beyond
+what was asked — judge them the same way; an absent one is never a fault". Every clause is about
+what the points are WORTH, addressed to a model rule 5 has just told it does not choose the grade,
+and it read as permission to skip them. Now: "validated exactly like the core points, and judged by
+exactly the same test — did the student convey this idea?"
+- **The INV-GRADE-9 guarantee is not weakened**, because the prompt was never what enforced it:
+  `optionalWeight` is added and never subtracted, so an absent optional point cannot lower a mark
+  whatever the model is told. The guarantee lives in the arithmetic. INV-GRADE-9's "both graders are
+  told" clause applies to BAND mode, where the grader picks the band and the statement is
+  meaningful; in points mode it is noise at best.
+
+**I/J. A points-mode evaluation, with fixtures.** 🔵 **Decision (instructor, 2026-09-17): build it,
+and build it properly.** Every harness in `tools/eval/` measured BAND mode and ORDERING, by
+degrading a `referenceAnswer` into full/partial/weak/none. That does not transfer: there is no way
+to degrade an answer into a known *vector* of per-point verdicts. New:
+- `tools/eval/points_fixtures.py` builds answers UP from a chosen subset of a question's own
+  points, so the correct verdict for every id is known by construction. Points are rewritten into
+  student voice (bank framing stripped, contractions, spoken lead-ins, clauses reordered) rather
+  than pasted, because pasting would measure string matching and flatter any grader.
+- **Clean and messy twins.** Every case is generated twice with identical content: once fluent,
+  once as a real transcript — fillers, false starts, a corrected slip, and the errors Whisper
+  actually makes on this material (spoken maths, split and merged words, homophones). The pair is
+  the measurement: any gap between their marks is the grader penalising *speech*, which INV-GRADE-3
+  forbids and nothing previously measured.
+- **`contradicted` is not synthesised by negation.** Mechanical negation produces ambiguity as
+  often as contradiction, and a fixture whose own label is doubtful measures nothing. False-claim
+  cases assert one of the bank's `commonErrors` instead — a wrong belief the course author has
+  already certified.
+- `tools/eval/points-bench.py` reports **`under` and `over` separately** (INV-GRADE-11), plus
+  `optCredit`, `messyCost`, false-claim catch rate, and signed score error against the mark the
+  constructed vector earns under the course's own curve.
+
+**K. Does the enriched prompt fit, and what does it cost in memory?** 🔵 **It fits, and it costs
+no memory at all.**
+
+- **Memory does not depend on prompt length.** llama.cpp allocates the KV cache for `n_ctx` when
+  the model loads, so filling 2,205 tokens of a 4,096-token window costs exactly what filling 1,986
+  does. Adding `referenceAnswer` and `evidence` therefore changes **time**, not **memory**, and
+  E8's measured 2.07 GB peak — taken at `n_ctx=4096` in a Gradescope-shaped container — is
+  unaffected. Nothing needs re-measuring, and the 4 CPU / 6 GB container setting stands.
+- **What the window itself costs, if it ever needs to grow.** Measured here by loading the same
+  GGUF with one slot and with four: 2.155 GB against 2.69 GB, so a 4,096-token KV cache is about
+  **180 MB**, or ~45 MB per 1,024 tokens. Going to `n_ctx: 6144` would cost ~90 MB against 66%
+  headroom. Cheap — but not needed, which is the better answer.
+- **On a Gradescope container**, nothing changes: one slot, in-process `llama_cpp`, `n_ctx=4096`,
+  one question per call (E8), so the footprint is flat in `questionsPerAttempt` as before. If the
+  window is ever raised, re-measure with `tools/eval/model-study.py`, which reads the kernel's own
+  `VmHWM` rather than estimating.
+
+**K (context budget).** 🔵 **Fits, with room.** Measured against the real tokenizer
+rather than estimated: the bare points prompt is **1,986** tokens and its reply **302**; adding
+`referenceAnswer` + `evidence` costs **+219** tokens of prompt (2,205) and the reply gets slightly
+*shorter* (269). Against `n_ctx: 4096` that is ~1.6k of headroom, and even the bank's longest
+question with a long answer and the full 1,200-token reply cap stays under. **No `n_ctx` change, so
+E8's 2.07 GB peak and the 4 CPU / 6 GB container sizing stand.** An earlier estimate in this file
+said the opposite; it divided characters by 3.6, and the real ratio on this structured text is ~4.6.
+- **Caching the context at build time — asked, and it is the right instinct aimed at the wrong
+  resource.** A KV prefix *can* be reused, and the ~1,470-token system prompt is identical on every
+  call, so llama.cpp re-prefills it 5 times per submission for nothing. But that is **time**, and
+  memory was the thing under pressure — and a cached prefix would *add* memory, not save it, since
+  it has to be held. Worth doing as a speed optimisation if grading ever runs close to the
+  Gradescope timeout; not worth doing for the reason it was asked. The per-question text differs
+  every call and grading is one question per call by design (E8), so nothing beyond the system
+  prompt is shareable.
+- **A pre-compressed context field in the bank — considered and rejected.** It would put a
+  *paraphrase* of the course's words in front of the grader, and the entire value of `evidence` is
+  that it is **verbatim and verified against the source**; a summary of it is just a worse `rubric`,
+  which the bank already has. It would also add a bank field that can silently drift from the
+  lecture it claims to compress, with nothing to check it against — `evidence` can be re-verified
+  against the transcript, and a summary cannot. The measured cost of the real thing is 219 tokens
+  and no memory, so there is nothing to compress away.
+
+**L. May the two prompts diverge?** 🔵 **Yes** — see the decision recorded under G.
+
+**M. Per-backend calibration.** 🔵 **Allowed, and probably unnecessary.** The instructor's
+position: with points mode the code does the arithmetic, so a grader that judges each point
+correctly needs no calibration at all. Calibration is a patch for a model whose *numbers* are
+skewed, and this design took the numbers away from the model on purpose. Reach for
+`calibrate-grader.py` only if a measured, persistent skew survives the prompt work.
+
+### Positive mistakes beat negative mistakes (2026-09-17, INV-GRADE-11)
+
+- **Decision (instructor):** 🔵 **A grading mistake must fall the student's way.** Credit for
+  something not quite earned is an acceptable error; a mark taken off work that *was* earned is
+  not. Where a choice is genuinely uncertain — a verdict, a threshold, a rounding rule, an
+  unparseable reply, a penalty on thin evidence — it resolves in the student's favour. The
+  instructor's framing: *"aim to have negative mistakes low while positive mistakes are okay"*, and
+  *"I'd rather give a better grade than penalize students for mistakes in grading."*
+- **Scope: the whole project, not one knob.** Written up as INV-GRADE-11 in
+  [models/02](../../models/02-requirements-and-invariants.md) and as a rule in
+  [AGENTS.md](../../AGENTS.md), so it steers future design rather than being rediscovered.
+- **It is descriptive before it is aspirational.** Eight existing choices already point this way and
+  were each made separately: `curveRounding: "up"`; a missing verdict is a gap, not an `absent`;
+  penalties need a quote; an uncorrected false claim caps rather than zeroes; self-correction is
+  never an error; `dropLowest`; optional points may only raise a mark; and a grader that cannot run
+  produces no mark rather than a low one. Naming the pattern is what makes the ninth choice easy.
+- **What it forbids, concretely.** Tuning a grader or a prompt to minimise *total* error, which buys
+  accuracy on positive mistakes with exactly the negative ones this rule exists to prevent. Every
+  grader evaluation must report the two directions separately — `under` and `over` in
+  `tools/eval/points-bench.py` — and a change that lowers total error while raising `under` is a
+  regression whatever its headline number says.
+- **The instructor's overall aim, recorded because it ranks the work:** *"a reliable grading backend
+  that doesn't have surprises or random failures even if it is not as good as GenAI."* Reliability
+  before sharpness. A grader that is a little blunt and never surprises is the target; one that is
+  sharper on average and occasionally returns nothing is not.
+
+### Purdue retires `qwen3.6:27b` on 2026-09-23 — what to switch to (2026-09-21, INV-DEPLOY-8)
+
+Purdue announced that `qwen3.6:27b` is replaced in place by `qwen3.8:27b` on 2026-09-23. Both of the
+pilot's GenAI courses pin `GENAI_STUDIO_MODEL=qwen3.6:27b` in their own
+`.env`, so every zip they have in Gradescope fails from that day. It fails with no mark, not a low
+one.
+
+- **What the new ID is.** Unknown until it is live. GenAI Studio was down for the MATH datacenter
+  outage (2026-09-19..21) and still answered 503 on the 21st. **Best guess:** `qwen3.8:27b`. Read it
+  from `node tools/genai-models.js --course courses/<id>/course.json`, do not type it from the email.
+- **Does 3.8 grade like 3.6?** The 2026-08-31 comparison that chose 3.6 (see `DEFAULT_GENAI_MODEL`
+  in `grade.py`) does not transfer. **Best guess:** switch, then re-run the eval on 3.8 before
+  releasing marks. Report `under` and `over` **separately** (INV-GRADE-11). If 3.8 raises `under`,
+  that is a regression, and the answer is `local` or a different offered model, not "close enough".
+- **Submissions in flight on the 23rd.** Anything graded by an old zip after the switch has no
+  mark, which is the safe way to fail. **Best guess:** rebuild, upload and regrade the affected
+  assignment once. A regrade under a new model is a new grader, so regrade **everyone** on that
+  assignment together, not only the failures (INV-GRADE-1 fairness).
+- **Unreachable at build time: warn or refuse?** Proceeding with **warn** (see INV-DEPLOY-8 for why
+  this differs from INV-DEPLOY-5). Revisit if a zip ever ships against a dead model because the
+  warning was missed.
+
+### The reply FORMAT decided this grader, not the context (2026-09-17)
+
+Working through G and H produced a result neither question anticipated, so it is recorded as its
+own entry. **On qwen2.5-3b in points mode, how the reply is asked for matters more than anything
+else in the prompt** — more than the rubric, the reference answer, the evidence quotes, the
+optional-point framing, or the order the points are listed in. Measured on the same 6 quiz-03
+questions with the same fixtures throughout:
+
+| reply format | required points credited | optional points credited | unreadable |
+|---|---|---|---|
+| `"verdict":"stated\|partly\|absent\|contradicted"` | — | — | every reply; the alternation was copied verbatim |
+| a filled JSON example, real ids | 24/24 | **0/18** | ~0 |
+| …example with mixed optional verdicts | 24/24 | 4/18 | ~0 |
+| …example with all-`stated` verdicts | — | 6/18 | ~0 |
+| one flat point list, no CORE/SUPPORTING split | 24/24 | 4/18 | ~0 |
+| optional points listed FIRST | 23/24 | 2/18 | ~0 |
+| **one line per point**, verdict first | 26/26 | 12/12 | 2–4 in 18 |
+| **one line per point, QUOTE first** | — | 18/18 | **0 in 12** |
+
+- **A 3B shown a filled structure copies it.** The JSON example came back with its own verdict
+  pattern *and* its placeholder evidence strings ("what they said about this point") sitting in the
+  reply. Because that example showed the optional slots as `absent`, every answer got `absent` —
+  while the model's own `feedback`, in the same reply, described the optional points correctly. It
+  was never misreading the answers; it was reproducing an example.
+- **Order the fields so the model must look before it commits.** Verdict-first, it decides and then
+  writes an evidence field to match — optional points the answer did not contain were credited 97%
+  of the time. Quote-first it has to find the student's words before it can choose, and false credit
+  fell to 67% with not one reply in twelve unreadable. Both field orders are still ACCEPTED on the
+  way back in (INV-GRADE-11): a model that answers the other way round has still judged the point.
+- **Per-point calls are worse, not better** — tried because they looked like the reliable option.
+  60 calls instead of 12, required points 16/24, optional false-credit 11/18. A point judged with
+  no sight of the rest of the answer loses the thing that decides it.
+- **The rules have to agree with the format.** `pointscore.RULES` ends "Reply with ONLY the JSON";
+  handing that to a model asked for lines is a contradiction, and it measured as one (4-in-18
+  unreadable against 2-in-18). The local system prompt now re-points only the FORMAT sentences; the
+  judgement rules are pointscore's own words, and the shared rules are untouched for GenAI.
+
+**What is left, and it is a capability limit rather than a prompt bug.** Ruled out: framing,
+context, the core/supporting split, point order, the example, the rules contradiction, and field
+order. What remains: given an answer that is on topic, this model does not reliably tell WHICH
+listed points it made. The control that shows it cleanly — an answer conveying nothing gets 0/20
+points credited, while an answer conveying one required point gets 20/20 of the rest credited too.
+It discriminates between an answer and no answer, then judges the answer holistically and applies
+that judgement to every line.
+- Under INV-GRADE-11 this errs UPWARD, which is the acceptable direction and matches the
+  instructor's stated preference. `under` measures at 0.0%.
+- **What it means in practice, on a real submission:** with every fix in place, the first of the
+  four Quiz 3 recordings scores **10.0/10, every question 1.000**. It was 8.8 before this session's
+  work and 8.5 after the format fixes; the whole move came from removing penalties that should
+  never have applied, not from better judgement. The bottom of the scale still works — an answer
+  conveying nothing gets 0 of 20 points credited — so it is not rubber-stamping. Between "said
+  something relevant" and "said everything" it does not separate. On this bank the local grader is
+  closer to a **completion check** than to a mark.
+- But that makes the curve's middle rungs uninformative, and it is a trade to choose deliberately
+  rather than a defect to be prompted away. **Open for the instructor**, with no best guess offered
+  because it is a policy call, not an engineering one. It may be perfectly acceptable as a one-off
+  remedy for a quiz GenAI never graded — everyone treated the same, erring generous — and quite
+  unacceptable as the standing grader for the course.
+- **The one lever left that is not "a bigger model", and it is measurable rather than hopeful:**
+  check the grader's own EVIDENCE against the transcript. A `stated` verdict whose quote contains
+  words the student never said is a fabricated award, and unlike everything else tried here it can
+  be checked in code, deterministically, with no second model call. `points-bench.py` now records
+  the evidence and reports a `grounded` rate for exactly this reason.
+  - **Reported, never applied**, and that restraint is the point. Turning a failed grounding check
+    into a DOWNGRADE would manufacture the negative mistakes INV-GRADE-11 forbids — a model that
+    paraphrases the student rather than quoting them would cost marks for the grader's habits.
+    There is precedent either way (an unquoted novel point is already dropped, which is an award
+    refused for want of evidence), so this is a real option — but it needs the measurement first.
+  - **Measured, and they predict it almost perfectly.** Over 449 credited verdicts on 102
+    constructed answers:
+
+    | the grader's quote | credits | of which FALSE |
+    |---|---|---|
+    | NOT found in the transcript | 94 | **91 (97%)** |
+    | found in the transcript | 355 | 125 (35%) |
+
+    Refusing credit on an ungrounded quote removes **91 of 216 false credits** and costs **3
+    correct ones** — about thirty to one, and by a distance the largest lever measured on the
+    over-crediting. It is also the only one that is deterministic code rather than a prompt.
+  - **Confirmed end to end**, the whole benchmark run with it on and off rather than extrapolated
+    from the correlation:
+
+    | | off | on |
+    |---|---|---|
+    | `over` | 50.9% | **32.5%** |
+    | `under` | 0.0% | **0.6%** |
+    | `optCredit` | 100% | 96.9% |
+    | `readable` | 97.1% | 99.0% |
+    | `grounded` | 79.1% | 100% |
+
+    A 36% relative cut in over-crediting for 0.6% under-crediting. (`falseClaim` reads 4/6 against
+    2/6 across the two runs, which is six cases and well inside run-to-run noise — not a finding.)
+  - **Built as `scoring.requireGroundedEvidence`, and OFF by default.** 🔴 **Instructor's call.**
+    Those 3 withdrawn credits are NEGATIVE mistakes, which INV-GRADE-11 says to design against — a
+    grader that paraphrases the student rather than quoting them would cost marks for its own
+    habits. Whether 42% less false credit is worth 0.7% of credits wrongly withdrawn is a
+    grading-policy decision and not an engineering one. Set it to `true` in `defaults.scoring` (or
+    per assignment) to take the trade; `tools/eval/points-bench.py` reports the `grounded` rate
+    either way, so the number can be re-checked on any bank.
+
+
+## Local profile integration (2026-09-21)
+Proceed with Qwen3.5 4B Q4_K_M context/no-thinking as the default local model, versioned `qwen35-context-off-v1`. Preserve explicit legacy Qwen2.5 and existing GenAI choices; pin prior course assignments before changing future defaults. Keep the evaluated prompt unchanged: the known admission-of-ignorance false credit is reported, not hidden by an unmeasured heuristic. Grounding remains opt-in because removing ungrounded credit also removed earned credit. New banks should use disjoint criteria and optional authored context; authoring context needs instructor/reference review. Band-mode compatibility is supported but points evidence does not certify band quality. Regrade alternatives may enhance keys while proving identical student-facing questions and selection metadata. Use only the authorized accommodation synthetic self-test in automated gates.
+
+## Instructor identity-debug package (2026-09-21)
+The instructor explicitly requested uploading student recordings under their own email
+for testing. Implement a build-only `--debug-identity` option, scoped to one pinned
+assignment. Keep identity comparison active and report mismatch, while allowing the
+rest of the grading pipeline to run. Label filename and every result DEBUG; retain all
+other validation and normal production identity behavior. Do not modify deployed
+course settings or reuse the public demo bypass. Pair a new normal Quiz 3 enhanced-v2
+package with a DEBUG sibling, preserving previous artifacts and the same question bank.
+
+## Grading timing and display order (2026-09-21)
+Instructor requested student-visible start/finish/total and instructor-only stage
+breakdown at the end, with questions first. Use America/Indiana/Indianapolis (DST-aware),
+monotonic elapsed time, sequential main stages and separately labeled nested Qwen spans.
+Report result-preparation completion, not queue/image-build time or a fabricated timestamp
+for the future file write. Preserve previous artifacts and build a v3 pair. Make Whisper's
+four-thread default explicit; Qwen already pins four prompt/generation threads.
+
+## Gradescope cap accounting (2026-09-22)
+The instructor's first provided native report took 535.320 seconds but recorded only
+0.962 GiB cgroup-v1 charge against 6 GiB. This is 16.033%, not 96.2%; eight samples
+occurred during inference. The v3 report lacks live-model RSS/PSS and scope provenance,
+so shared file-page charging is plausible but not proven. Instructor requested whole
+container cap usage. Make cap charge/percent/headroom primary, verify scope/model
+membership, expose component and event counters, and retain live RSS/PSS only as a
+separate non-additive footprint diagnostic. Preserve v3 and build a v4 pair. Never
+lower the memory recommendation from this single ambiguous memory observation.
+
+## Oversized-model memory experiment (2026-09-22)
+
+Instructor explicitly requested a DEBUG-only model with weights larger than the
+6 GiB cap. Selected Qwen3.5 9B Q8_0 (8.873 GiB weights), preserving memory mapping
+and all grading settings for comparison. Keep the test cap at 6 GiB. File size
+does not guarantee simultaneous residency or failure: paging and external cache
+charges remain possible. Course-local derivative only; no production default change.
+
+## Quiz 4 completion diagnostics (2026-09-22)
+
+Instructor requests verbose failure diagnostics for the next quiz. Add shared,
+flushed lifecycle events and heartbeat to instructor stdout, and append the
+pre-write event history to the final hidden diagnostic item. Post-write shutdown
+and launcher status necessarily appear only in stdout. Do not infer platform
+fault from absent events. Quiz 4 is still a draft: prepare a separately labeled
+test package with Quiz 3 settings; do not register/deploy a live assignment.
+
+## Missed spoken codes no longer zero an attempt (2026-10-05, INV-CODE-4)
+
+Instructor decision: a Quiz 4 attempt lost its opening code in transcription although
+the student read it. Revised the same day: an attempt with at least half its codes
+heard is graded, flagged, and the student warned that review may affect the grade.
+Fewer than half, or any other integrity failure, scores 0 but is still graded, with
+the result kept instructor-only for override. Accepted cost: a padded pre-recording
+needs to hit only half the boundaries to be graded; it is always flagged for review.
+Open: whether the flag alone is enough. Best guess: yes, for formative quizzes.
+
+## Shared workstation model storage (2026-10-10)
+Instructor requested removal of stock comparison downloads and reuse across
+Codex/Claude sessions. Retain the manifest-pinned Qwen3.5 4B GGUF in the standard
+Hugging Face cache with Whisper, rather than switching the qualified llama.cpp
+grader to Ollama. Lookup is offline, exact-revision, and explicit overrides fail
+closed. Historical course pins and released images remain unchanged; reproducing
+old Qwen2.5/comparison runs requires an explicit shared-cache download.

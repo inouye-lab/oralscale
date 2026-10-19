@@ -146,6 +146,12 @@ def heuristic_grade(transcript: str, question: dict) -> dict:
 # Switching costs nobody a regrade: both graders share one band->score table,
 # so the marks stay commensurable (INV-GRADE-1). A course can still pin its own
 # model with GENAI_STUDIO_MODEL — this is the default, not a lock.
+#
+# RETIRING 2026-09-23: Purdue replaces qwen3.6:27b with qwen3.8:27b in place.
+# Update this once the new ID is visible in `node tools/genai-models.js`, and
+# re-run the comparison above on it before trusting it for marks. Until then a
+# build refuses a model the service does not list (INV-DEPLOY-8), so this stale
+# default cannot slip into a zip unnoticed.
 DEFAULT_GENAI_MODEL = "qwen3.6:27b"
 
 
@@ -292,6 +298,38 @@ _RATE_LIMIT_RE = re.compile(
 
 def _looks_rate_limited(detail: str) -> bool:
     return bool(detail) and bool(_RATE_LIMIT_RE.search(detail))
+
+
+# How an OpenAI-compatible server says "there is no model by that name". Open WebUI
+# (which GenAI Studio is) answers {"detail":"Model not found"}; others spell it
+# differently. Matched on the body for the same reason as the rate limit: the
+# status code varies (400 or 404) and the words do not.
+_MODEL_MISSING_RE = re.compile(
+    r"model[^\n]{0,60}?(not\s+found|does\s*n[o']t\s+exist|not\s+available|not\s+supported)"
+    r"|unknown\s+model|no\s+such\s+model|model_not_found|invalid\s+model",
+    re.I)
+
+
+def _looks_model_missing(detail: str) -> bool:
+    return bool(detail) and bool(_MODEL_MISSING_RE.search(detail))
+
+
+def _model_missing_reason(model, detail):
+    """Name the retired-model failure and its fix, instead of a bare HTTP line.
+
+    Purdue replaces models in place (qwen3.6:27b -> qwen3.8:27b, 2026-09-23), and
+    the model ID is BAKED INTO the zip at build time. So the day a model is
+    retired, every submission to every zip built against it fails the same way,
+    fast, and the instructor needs the remedy in the output, not a 404 to decode.
+    Nothing is graded by anything else (INV-GRADE-1): no mark, not a low one.
+    """
+    return (f"Purdue GenAI no longer offers the model '{model}' that this autograder "
+            f"was built with (it was probably retired or renamed). No submission can be "
+            f"graded by this zip until it is rebuilt. Find the current model ID with "
+            f"`node tools/genai-models.js --course courses/<id>/course.json`, set "
+            f"GENAI_STUDIO_MODEL to it in courses/<id>/.env, rebuild with "
+            f"`npm run package -- courses/<id>/course.json --zip`, upload the new zip "
+            f"and regrade. (Server said: {detail})")
 
 
 def _post_with_retry(url, body, headers, log):
@@ -907,6 +945,8 @@ def _genai_batch(items, log, ladder=None, policy=None):
     try:
         parsed, note = _genai_once(items, log, url, key, model, ladder=ladder, policy=policy)
     except Exception as e:
+        if _looks_model_missing(str(e)):
+            return {"error": _model_missing_reason(model, str(e))}
         if "max_tokens" in str(e):
             log.append("endpoint rejected max_tokens; retrying without it")
             try:
@@ -957,10 +997,10 @@ def _genai_batch(items, log, ladder=None, policy=None):
                               + "; ".join(errs[:3]))}
 
 
-def _normalise_points(a, backend, question, policy, ladder):
+def _normalise_points(a, backend, question, policy, ladder, transcript=None):
     """Points mode: the model's verdicts, the code's arithmetic (INV-GRADE-10)."""
     judged = pointscore.read_answer(a, question)
-    r = pointscore.compute(question, judged, policy, ladder)
+    r = pointscore.compute(question, judged, policy, ladder, transcript)
     r.update({
         "feedback": str(a.get("feedback") or "").strip()
                     or pointscore.narrative_fallback(r["points"]),
@@ -971,10 +1011,10 @@ def _normalise_points(a, backend, question, policy, ladder):
     return r
 
 
-def _normalise(a, backend, ladder=None, question=None, policy=None):
+def _normalise(a, backend, ladder=None, question=None, policy=None, transcript=None):
     """One model answer -> our result dict, with the score clamped to [0,1]."""
     if policy:
-        return _normalise_points(a, backend, question, policy, ladder)
+        return _normalise_points(a, backend, question, policy, ladder, transcript)
     score = _band_score(a, ladder)
     if score is None:
         score = 0.0
@@ -1023,23 +1063,72 @@ def _heuristic_points(transcript, question, policy, ladder):
     return r
 
 
+# Only the FINAL attempt samples off zero. See the note in the retry loop.
+_LAST_RUNG_TEMP = float(os.environ.get("ORALSCALE_LOCAL_LAST_TEMP", "0.3"))
+
+
 def _grade_locally(items, gradeable, results, log, ladder=None, policy=None):
     """Grade with the bundled open-weights model, one question per call.
 
     One call per question rather than a batch: there is no rate limit to economise
     against locally, and a batched prompt would make the context — and so the
     memory — grow with the question count. See localmodel.py.
+
+    AN UNUSABLE REPLY IS RETRIED (INV-GRADE-4). This loop had no retry at all
+    until 2026-09-17, while the GenAI path beside it has a four-rung ladder — so
+    a single reply the parser could not read cost the student the WHOLE
+    submission, and the instructor got `REGRADE REQUIRED` for a formatting slip
+    on one question out of five. Measured on real Quiz 3 answers, a 3B misses the
+    reply format on the order of one call in ten; over five questions that is
+    roughly two submissions in five lost to nothing but punctuation. It is also
+    the exact shape INV-GRADE-11 forbids — the cost of the model's mistake
+    landing on the student.
+
+    Retrying needs the call to differ, because grading runs at temperature 0 and
+    a bit-identical request returns a bit-identical reply. So rung 2 onward
+    appends a FORMAT REMINDER and nothing else: never the rubric, never the
+    points, never a hint about the score, because a retry that nudges the
+    JUDGEMENT would make a student's mark depend on how many attempts their
+    answer happened to need. Same rule the GenAI ladder follows.
     """
     fence = _fence()
+    attempts = max(1, int(os.environ.get("ORALSCALE_LOCAL_ATTEMPTS", "4")))
     done = []
     for i in gradeable:
-        r = localmodel.grade_one(items[i]["question"], items[i]["outbound"], fence,
-                                 ladder=ladder, policy=policy)
-        if "error" in r:
-            log.append(f"local model failed on question {i + 1}: {r['error']}")
-            continue
-        results[i] = r
-        done.append(i)
+        last = None
+        for rung in range(1, attempts + 1):
+            # THE LAST RUNG SAMPLES DIFFERENTLY, and only the last one.
+            #
+            # Rungs 1 and 2 run at temperature 0, because determinism is a
+            # fairness property: two students who said the same thing get the
+            # same mark. Rung 2 changes the REQUEST (the format reminder) rather
+            # than the sampling, which is the honest way to retry.
+            #
+            # By rung 3 that has been tried and failed twice, and the alternative
+            # on offer is not "a deterministic grade" — it is NO grade, for the
+            # whole submission (INV-GRADE-1). Measured on a real Quiz 3
+            # recording: one question failed all three deterministic attempts and
+            # took the other four down with it. A small temperature on the final
+            # attempt buys a genuinely different sample, and the trade it makes —
+            # a mark that depended on one re-draw, against a student losing
+            # everything to a reply format — is the one INV-GRADE-11 settles.
+            r = localmodel.grade_one(items[i]["question"], items[i]["outbound"], fence,
+                                     ladder=ladder, policy=policy,
+                                     reminder=(rung > 1),
+                                     temperature=(0.0 if rung < attempts else _LAST_RUNG_TEMP))
+            if "error" not in r:
+                if rung > 1:
+                    log.append(f"local model: question {i + 1} needed {rung} attempts "
+                               f"(first failed: {last})")
+                results[i] = r
+                done.append(i)
+                break
+            last = r["error"]
+            log.append(f"local model attempt {rung}/{attempts} failed on question "
+                       f"{i + 1}: {last}")
+        else:
+            log.append(f"local model failed on question {i + 1} after {attempts} "
+                       f"attempts: {last}")
     return done
 
 
@@ -1089,7 +1178,10 @@ def grade_all(items: list, backend: str = None, calibration=None, bands=None,
     # and a configuration error grades nobody rather than grading them wrongly.
     try:
         policy = pointscore.resolve_policy(scoring)
-        if policy:
+        # A CURVE NEEDS NO LADDER: with `scoring.table` the mark is read off the
+        # curve and no band name is produced, so a five-rung ladder is not
+        # required of the course. Without one, the bands still price the mark.
+        if policy and not policy["table"]:
             pointscore.check_ladder(ladder)
     except ValueError as e:
         raise GraderUnavailable(backend, f"course `scoring` setting is unusable: {e}")
@@ -1185,7 +1277,8 @@ def grade_all(items: list, backend: str = None, calibration=None, bands=None,
         for pos, i in enumerate(remaining):
             a = answers[pos] if answers and pos < len(answers) else None
             if a:
-                results[i] = _normalise(a, be, ladder, items[i]["question"], policy)
+                results[i] = _normalise(a, be, ladder, items[i]["question"], policy,
+                                        items[i].get("transcript"))
             else:
                 still.append(i)
         remaining = still

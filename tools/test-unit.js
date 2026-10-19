@@ -818,6 +818,36 @@ console.log('── crypto/protocol unit tests ──');
     check('t_link_needs_live_worker — refuses when the Signer cannot be reached',
       dead.status !== 0 && !minted(dead) && /Cannot confirm/.test(dead.stderr), `exit=${dead.status}`);
 
+    /* 6b) THE BANK ITSELF (INV-DEPLOY-7). Every check above passes while the
+     *     Worker serves entirely different QUESTIONS: a bank revised in place
+     *     keeps its bankId, its assignment id and its question ids, so nothing
+     *     else here can see the drift — and it is the drift that matters most,
+     *     because the autograder resolves a submission's questions BY ID and
+     *     would mark an answer against another question's rubric without ever
+     *     erroring. Observed over three same-day revisions of a live quiz. */
+    const Praw = require('fs').readFileSync(path.join(courseDir, 'banks', 'general-stem.json'));
+    const secretL = require('fs').readFileSync(path.join(courseDir, '.env'), 'utf8')
+      .trim().split('=')[1];
+    const trueTag = P.bankTag(secretL, ID, 'quiz-01', P.bankDigest(Praw));
+    health({ ...OK, bankRevision: { 'quiz-01': '1.0' }, bankTag: { 'quiz-01': trueTag } });
+    const sameBank = mint();
+    check('t_link_needs_live_worker — mints when the Worker serves this exact bank',
+      sameBank.status === 0 && minted(sameBank), `exit=${sameBank.status}`);
+
+    health({ ...OK, bankRevision: { 'quiz-01': '0.9' },
+      bankTag: { 'quiz-01': 'deadbeefdeadbeef' } });
+    const otherBank = mint();
+    check('t_link_needs_live_worker — refuses a Worker serving a DIFFERENT bank',
+      otherBank.status !== 0 && !minted(otherBank)
+        && /DIFFERENT BANK/.test(otherBank.stderr), `exit=${otherBank.status}`);
+
+    /* The tag must be KEYED, not a bare digest: /health is public, and a plain
+     * digest would let anyone holding a leaked bank confirm it is the genuine
+     * article. Same reasoning as the D1 schema's keyed tags. */
+    check('t_link_needs_live_worker — the published bank tag is keyed, not a plain digest',
+      trueTag !== P.bankDigest(Praw).slice(0, 16)
+        && P.bankTag('a different secret', ID, 'quiz-01', P.bankDigest(Praw)) !== trueTag);
+
     // 7) no override flag re-enables minting past a refusal. The escape hatch
     //    would be taken on exactly the rushed day this check exists for.
     health({ ...OK, assignments: [] });
@@ -921,6 +951,23 @@ console.log('── crypto/protocol unit tests ──');
   check('t_richtext_safe — LaTeX becomes MathML (fractions, sums, sub/superscripts)',
     mathTags.has('math') && mathTags.has('mfrac') && mathTags.has('msubsup') && mathTags.has('mi'),
     [...mathTags].join(','));
+  /* A braceless fraction argument is ONE token. `\tfrac12` is `\tfrac{1}{2}`, and
+   * getting this wrong does not merely misdraw the fraction — the denominator
+   * swallows the NEXT character, so `\mathrm{diag}(3,\tfrac12)` lost its closing
+   * bracket with no unknown macro and no raw-source fallback to give it away.
+   * Found in a live bank; the mutation guard is the token AFTER the fraction. */
+  const fracSpec = RT.parseRich('$\\mathrm{diag}(3,\\tfrac12)$')[0].children
+    .find((n) => n.t === 'math').children[0].children;
+  const frac = fracSpec.find((n) => n.t === 'mfrac');
+  check('t_richtext_safe — a braceless fraction takes one digit per argument',
+    frac && frac.children[0].text === '1' && frac.children[1].text === '2',
+    frac ? `${frac.children[0].text} over ${frac.children[1].text}` : 'no mfrac');
+  check('t_richtext_safe — and does not swallow what follows it',
+    fracSpec[fracSpec.length - 1].text === ')',
+    `last node: ${JSON.stringify(fracSpec[fracSpec.length - 1])}`);
+  check('t_richtext_safe — a braced multi-digit script is still one number',
+    textOf('$x^{12}$').includes('12'));
+
   check('t_richtext_safe — an unknown macro is shown, not silently dropped',
     textOf('$\\notacommand{x}$').includes('\\notacommand'));
   check('t_richtext_safe — math keeps its source for browsers without MathML',
@@ -1256,7 +1303,7 @@ except grade.GraderUnavailable as e:
 os.environ.pop("GENAI_STUDIO_API_KEY", None)     # force genai to be unavailable
 import grade, localmodel
 localmodel.available = lambda: True              # …and make local temptingly available
-localmodel.grade_one = lambda q,t,f: {"score":0.7,"feedback":"ok","covered":[],"missed":[],"backend":"local:test"}
+localmodel.grade_one = lambda q,t,f,**kw: {"score":0.7,"feedback":"ok","covered":[],"missed":[],"backend":"local:test"}
 try:
     r = grade.grade_all([{"question": ${q}, "transcript": ${t}}], backend="genai")
     print(json.dumps({"raised": False, "backend": r[0]["backend"]}))
@@ -1281,7 +1328,7 @@ os.environ.pop("GENAI_STUDIO_API_KEY", None)
 import grade, localmodel
 seen = []
 localmodel.available = lambda: True
-def fake(q,t,f,ladder=None,policy=None):
+def fake(q,t,f,ladder=None,policy=None,reminder=False,temperature=0.0):
     seen.append(1); return {"score":0.9,"feedback":"f","covered":[],"missed":[],"backend":"local:test"}
 localmodel.grade_one = fake
 r = grade.grade_all([{"question": ${q}, "transcript": ${t}}])
@@ -1409,9 +1456,9 @@ print(json.dumps({"matched": a, "unmatched": b}))`));
   const goneModel = run(['--course', path.join(__dirname, '..', 'courses', 'demo'),
     '--model', 'qwen3-4b']);
   check('t_score_bonus — set-grading refuses --model, which no longer selects anything',
-    goneModel.status !== 0 && /--model is gone/.test(goneModel.stderr));
+    goneModel.status !== 0 && /--model must be one of/.test(goneModel.stderr));
   check('t_score_bonus — …and points at the backend choice that IS live',
-    /--backend genai/.test(goneModel.stderr) && /qwen3\.6/.test(goneModel.stderr));
+    /qwen3\.5-4b/.test(goneModel.stderr) && /qwen2\.5-3b/.test(goneModel.stderr));
   const badBackend = run(['--course', path.join(__dirname, '..', 'courses', 'demo'),
     '--backend', 'magic']);
   check('t_score_bonus — …and the backend against the real list',
@@ -1438,12 +1485,22 @@ print(json.dumps({"matched": a, "unmatched": b}))`));
   const build = fs2.readFileSync(path.join(__dirname, 'build-autograder.js'), 'utf8');
   check('t_genai_key_scope — the build decides per ASSIGNMENT, not just on defaults',
     /genaiAssignments = Object\.keys\(copy\.assignments/.test(build)
-    && /\(copy\.assignments\[aid\] \|\| \{\}\)\.gradingBackend/.test(build),
+    && /\(\(cfg\.assignments \|\| \{\}\)\[aid\] \|\| \{\}\)\.gradingBackend/.test(build),
     'a course may run genai for some weeks and local for others');
+  /* And per ZIP, which is the stronger statement: one zip holds one assignment
+     (INV-DEPLOY-3), so the decision belongs in the build loop, reading the
+     config actually written into that zip. Behaviour: t_zip_env_matches_backend. */
+  check('t_genai_key_scope — …and inside the per-assignment loop, from THAT zip\'s config',
+    /const genaiHere = backendIn\(one, aid\) === 'genai';/.test(build));
   check('t_genai_key_scope — the credentials are DELETED from the build env when unused',
-    /if \(!usesGenai\) \{[\s\S]{0,400}?for \(const k of had\) delete env\[k\]/.test(build));
+    /for \(const k of GENAI_KEYS\) \{\n\s*if \(genaiHere && GENAI_ENV\[k\]\) env\[k\] = GENAI_ENV\[k\];\n\s*else delete env\[k\];/
+      .test(build)
+    // …including one exported into the environment, which would otherwise ride
+    // in through `{ ...process.env }` without any course asking for it.
+    && /for \(const k of GENAI_KEYS\) delete env\[k\];/.test(build));
   check('t_genai_key_scope — and the omission is announced, not silent',
-    /were NOT written into the zip/.test(build));
+    /were NOT written into any zip/.test(build)
+    && /the GenAI key is NOT in this zip/.test(build));
   check('t_genai_key_scope — an incompletely configured genai build is refused',
     /usesGenai && genaiFound\.length !== GENAI_KEYS\.length/.test(build)
       && /INV-GRADE-1 forbids silently grading with another/.test(build));
@@ -1814,41 +1871,13 @@ print(json.dumps(out))`));
 // must refuse to run for an automation, and must be verifiable without one.
 // ---------------------------------------------------------------------------
 {
-  const auditPath = path.join(__dirname, 'audit-accommodations.js');
-  const src5 = require('fs').readFileSync(auditPath, 'utf8');
-
-  // The guard is two gates and NO bypass. A --force flag would be the first
-  // thing reached for, and its existence would make the guarantee worthless.
-  check('t_audit_offline — requires a TTY on both stdin and stdout',
-    /!process\.stdin\.isTTY \|\| !process\.stdout\.isTTY/.test(src5));
-  check('t_audit_offline — refuses on assistant and CI environment markers',
-    /CLAUDECODE/.test(src5) && /GITHUB_ACTIONS/.test(src5) && /OPENAI_API_KEY/.test(src5));
-  // Look for a bypass being READ, not merely mentioned: the file legitimately
-  // says "there is deliberately no --force", and fs.rmSync takes {force:true}.
-  // Matching the word rather than its use would make this assertion unfixable
-  // and therefore ignorable.
-  const bypassRead = /(arg|argv[^\n]{0,40}(includes|indexOf))[^\n]{0,40}(force|yes|no-tty|allow-?agent|skip-?guard|non-?interactive)/i
-    .test(src5) || /process\.env\.[A-Z_]*(SKIP|BYPASS|ALLOW)[A-Z_]*/.test(src5);
-  check('t_audit_offline — has no override flag or escape-hatch env var',
-    bypassRead === false);
-
-  // Running it here must FAIL, and for the right reason. This test runs inside
-  // exactly the environment the guard is meant to stop.
-  const refused = spawnSync('node', [auditPath, '--course', 'x', '--submissions', 'y', '--roster', 'z'],
+  // AGENTS.md forbids reading this source or running it with input paths.
+  // The synthetic self-test is the sole authorized automated entry point.
+  const self = spawnSync('node', [path.join(__dirname, 'audit-accommodations.js'), '--self-test'],
     { encoding: 'utf8' });
-  check('t_audit_offline — refuses to run from this test harness',
-    refused.status === 2 && /REFUSED/.test(refused.stderr || ''),
-    `exit ${refused.status}`);
+  check('t_audit_offline — authorized synthetic self-test',
+    self.status === 0 && /audit self-test OK/.test(self.stdout || ''));
 
-  // …but the arithmetic is still covered, on synthetic data that names nobody.
-  const self = spawnSync('node', [auditPath, '--self-test'], { encoding: 'utf8' });
-  check('t_audit_offline — the self-test covers the join and timing on synthetic data',
-    self.status === 0 && /audit self-test OK/.test(self.stdout || ''),
-    (self.stdout || self.stderr || '').trim().split('\n').pop());
-  const refusedSelf = spawnSync('node', [auditPath, '--self-test', '--roster', 'real.csv'],
-    { encoding: 'utf8' });
-  check('t_audit_offline — the self-test refuses a real roster',
-    refusedSelf.status !== 0, `exit ${refusedSelf.status}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -2174,7 +2203,7 @@ print(int(L.lateness_seconds("2018-07-01T14:22:32.365935-07:00", "2018-07-01T13:
   // module and pick the directory localmodel.model_path() actually reads.
   const lab = fs10.mkdtempSync(path.join(os10.tmpdir(), 'oralscale-setup-'));
   fs10.mkdirSync(path.join(lab, 'source'));
-  for (const mod of ['localmodel.py', 'bands.py', 'pointscore.py']) {
+  for (const mod of ['localmodel.py', 'modelcache.py', 'bands.py', 'pointscore.py']) {
     fs10.copyFileSync(path.join(__dirname, '..', 'autograder', 'source', mod),
       path.join(lab, 'source', mod));
   }
@@ -2204,7 +2233,7 @@ print("OK" if os.path.join(SRC, "models") == want else "MISMATCH")
 // ---------------------------------------------------------------------------
 {
   const fs11 = require('fs');
-  const setup11 = fs11.readFileSync(path.join(__dirname, '..', 'autograder', 'setup.sh'), 'utf8');
+  const setup11 = fs11.readFileSync(path.join(__dirname, '..', 'autograder', 'setup-legacy.sh'), 'utf8');
 
   // Installation must be followed by an actual import, not trusted on exit
   // code. The fallback may compile llama-cpp-python, but must NOT force every
@@ -2242,14 +2271,15 @@ print("OK" if os.path.join(SRC, "models") == want else "MISMATCH")
     /ORALSCALE_LOCAL_REQUIRED:-0\}" = "1"/.test(setup11)
     && /exit 1/.test(setup11) && /NOTE: no local grading model in this image/.test(setup11));
 
-  // …and that flag must be derived from the course, not guessed.
+  // …and that flag must be derived from the assignment in the zip, not guessed
+  // and not read off the course as a whole — one zip, one assignment.
   const build11 = fs11.readFileSync(path.join(__dirname, 'build-autograder.js'), 'utf8');
   check('t_setup_llm — packaging prints the larger container required by local grading',
-    /if \(localAssignments\.length > 0\)/.test(build11)
+    /const localBuilt = built\.filter\(\(b\) => !b\.genai\)/.test(build11)
     && /4\.0 CPU \/ 6\.0 GB RAM/.test(build11)
     && /2\.0 CPU \/ 3\.0 GB RAM/.test(build11));
-  check('t_setup_llm — LOCAL_REQUIRED is derived from the course backends',
-    /env\.ORALSCALE_LOCAL_REQUIRED = localAssignments\.length > 0 \? '1' : '0'/.test(build11));
+  check('t_setup_llm — LOCAL_REQUIRED is derived from the backend of the zip it ships in',
+    /env\.ORALSCALE_LOCAL_REQUIRED = genaiHere \? '0' : '1'/.test(build11));
   const buildSh11 = fs11.readFileSync(path.join(__dirname, '..', 'autograder', 'build.sh'), 'utf8');
   check('t_setup_llm — LOCAL_REQUIRED is written into secret.env',
     /ORALSCALE_LOCAL_REQUIRED=\$\{ORALSCALE_LOCAL_REQUIRED:-0\}/.test(buildSh11));
@@ -2288,7 +2318,7 @@ print("OK" if os.path.join(SRC, "models") == want else "MISMATCH")
 
   // 4) The student must not be left thinking they failed, or that they must
   //    resubmit. This is our outage, not their work.
-  const studentMsg = (r12.match(/student_top=\(\s*\n\s*"Your recording was received[\s\S]*?\)\)/) || [''])[0];
+  const studentMsg = (r12.match(/student_top=\(\s*\n\s*\(?"Your recording was received[\s\S]*?\)\)/) || [''])[0];
   check('t_no_grader_fallback — the student is told it is not their fault',
     /not a problem with\s*"\s*\n?\s*"your submission/.test(studentMsg.replace(/\s+/g, ' '))
       || /not a problem with your submission/.test(studentMsg.replace(/\s+/g, ' ')),
@@ -3078,8 +3108,13 @@ console.log(JSON.stringify({
   // inferred at grading time the filename is what tells an instructor which zip
   // to upload, so it is load-bearing rather than cosmetic.
   check('t_course_bound_autograder — artifact name includes courseId, assignmentId and version',
-    /\$\{safeCourseId\}-\$\{safeId\(aid\)\}-oralscale-v\$\{releaseVersion\}\.zip/.test(build)
-      && /artifactDir = path\.join\(courseDir, 'autograders'\)/.test(build));
+    /\$\{safeCourseId\}-\$\{safeId\(aid\)\}-oralscale-v\$\{releaseVersion\}\$\{artifactSuffix\}\$\{debugIdentity \? "-DEBUG-identity-flag-only" : ""\}\.zip/.test(build)
+      && /artifactDir = path\.join\(courseDir, 'autograders'\)/.test(build)
+      // The suffix is EMPTY for an ordinary build and only ever names a regrade
+      // variant, so the released artifact keeps the name an instructor already
+      // has written down (INV-DEPLOY-6).
+      && /let artifactSuffix = '';/.test(build)
+      && /artifactSuffix = `-regrade-\$\{safeId\(regradeVariant\)\}`;/.test(build));
   check('t_course_bound_autograder — ambiguous generic zip is moved, not retained',
     /fs\.renameSync\(zip, out\)/.test(build));
   check('t_course_bound_autograder — secret-bearing artifacts are ignored centrally and per course',
@@ -3300,7 +3335,7 @@ console.log(JSON.stringify({
   // audit-accommodations.js replaced it and derives the same refs, so it is held
   // to the same rule: a link or a ref minted under the wrong secret is
   // perfectly well-formed and silently matches nothing.
-  for (const tool of ['gen-url.js', 'gen-access-keys.js', 'audit-accommodations.js']) {
+  for (const tool of ['gen-url.js', 'gen-access-keys.js']) {
     const src = fs14.readFileSync(path.join(ROOT14, 'tools', tool), 'utf8');
     check(`t_per_course_secret — ${tool} resolves per course, not from server/config.json`,
       /SECRETS\.resolve\(/.test(src) && !/'server',\s*'config\.json'/.test(src),
@@ -3705,6 +3740,27 @@ print(json.dumps({
   "rejectPartial":  B.resolve(band_scores={"full": 1.0, "partial": 0.5}).scores,
   "customIsDefault": custom.is_default,
   "prefixSafe":     B.resolve(bands={"part": 1.0, "partial": 0.5}).alternation(),
+  "pointsPrompt":   LM.build_points_prompt(
+                      {"prompt": "p", "rubric": "r",
+                       "keyPoints": ["core one", "core two"], "bonusPoints": ["extra"]},
+                      "t", "FENCE"),
+  "bankContext":    LM.bank_context(
+                      {"referenceAnswer": "a reference answer here",
+                       "evidence": [{"source": "lecture", "quote": "the lecture said this"}]}),
+  "bankContextEmpty": LM.bank_context({"prompt": "p", "keyPoints": ["a"]}),
+  "pointsBlock":    __import__("pointscore").points_block(
+                      {"keyPoints": ["core one", "core two"], "bonusPoints": ["extra depth"]}),
+  "pointsSystemLines":      ("ONLY the lines" in LM.POINTS_SYSTEM
+                             and "ONLY the JSON" not in LM.POINTS_SYSTEM),
+  "pointsSystemKeepsRules":  ("SELF-CORRECTION IS NOT AN ERROR" in LM.POINTS_SYSTEM
+                             and "JUDGE EACH POINT ON ITS OWN" in LM.POINTS_SYSTEM),
+  "sharedRulesIntact":       "ONLY the JSON" in __import__("pointscore").RULES,
+  "parsesQuoteFirst":   [(p["id"], p["verdict"], p["evidence"]) for p in LM.parse_points_lines(
+                            "R1 | they said this | stated", {"keyPoints": ["a"]})["points"]]
+                        == [("R1", "stated", "they said this")],
+  "parsesVerdictFirst": [(p["id"], p["verdict"], p["evidence"]) for p in LM.parse_points_lines(
+                            "R1 | stated | they said this", {"keyPoints": ["a"]})["points"]]
+                        == [("R1", "stated", "they said this")],
 }))`));
 
 {
@@ -3730,6 +3786,97 @@ print(json.dumps({
   check('t_local_grader_bands — the boundaries name absence AND wrongness',
     /Missing a point is `partial`; being wrong about the point is `none`/.test(src)
     && /Shallow is not wrong/.test(src));
+
+  /* t_local_points_prompt_shape (INV-GRADE-10) — ONE LINE PER POINT, not JSON.
+     The format decided this grader, and the measurements are worth keeping next
+     to the assertions that pin them (6 questions, quiz-03, qwen2.5-3b):
+
+       "verdict":"stated|partly|absent|contradicted"   copied verbatim, always
+       a filled JSON example with real ids              parseable, then copied as
+                                                        a BLOCK — the example's
+                                                        verdict pattern AND its
+                                                        placeholder evidence
+                                                        strings came back in the
+                                                        reply. Required points
+                                                        24/24, optional 6/18, and
+                                                        the model's own feedback
+                                                        in the same reply
+                                                        described the optional
+                                                        points correctly.
+       one line per point                               optional 16/18.
+
+     A 3B shown a filled structure copies it, and a JSON object is a structure you
+     can copy whole. A line has to be produced next to the id it answers for. */
+  const pp = bandsProbe.pointsPrompt;
+  check('t_local_points_prompt_shape — one line per point, and never a copyable JSON block',
+    /<id> \| <the student's own words> \| <verdict>/.test(pp) && !/"points"\s*:\s*\[/.test(pp)
+    && !/"verdict"\s*:\s*"stated\|partly\|absent\|contradicted"/.test(pp), pp.slice(-700));
+  /* THE QUOTE COMES FIRST, and the ordering is the measurement. Verdict-first,
+     the model commits and then writes an evidence field to match: optional points
+     the answer did not contain were credited 97% of the time and roughly one
+     reply in six dropped a line. Quote-first it has to read the transcript before
+     it can commit — false credit 67%, and 0 of 12 replies unreadable. */
+  check('t_local_points_prompt_shape — the quote is asked for BEFORE the verdict',
+    /FIND THEIR WORDS FIRST/.test(pp)
+    && pp.indexOf("<the student's own words> | <verdict>") > 0, pp.slice(-700));
+  check('t_local_points_prompt_shape — the example shows the FORM, using ids that are not the question\'s',
+    /Z9 \| and that's why it cancels out \| stated/.test(pp) && !/R1 \| stated \|/.test(pp),
+    pp.slice(-700));
+  check('t_local_points_prompt_shape — the real ids are enumerated, in order',
+    /Your lines, in this order: R1, R2, O1/.test(pp), pp.slice(-700));
+  check('t_local_points_prompt_shape — the four verdicts are named as a choice, and the other lines described',
+    /exactly one of: stated, partly, absent, contradicted/.test(pp)
+    && /FALSE \| /.test(pp) && /NOVEL \| /.test(pp) && /FEEDBACK \| /.test(pp), pp.slice(-700));
+  /* The third field is the STUDENT's words. Given the idea list and the
+     transcript, a 3B will copy the IDEA into the evidence field — bank framing
+     and all — and then credit the point it has just quoted to itself. */
+  check('t_local_points_prompt_shape — the quote must be the transcript, not the idea list',
+    /must be words that appear in the TRANSCRIPT/.test(pp)
+    && /Never copy the wording of the idea from the list above/.test(pp), pp.slice(-700));
+  /* Both field orders parse. A model that writes verdict-first has still judged
+     the point, and refusing it would cost the student the submission over field
+     order — the negative mistake INV-GRADE-11 forbids. */
+  check('t_local_points_prompt_shape — …and either field order is still accepted when it comes back',
+    bandsProbe.parsesQuoteFirst === true && bandsProbe.parsesVerdictFirst === true,
+    JSON.stringify([bandsProbe.parsesQuoteFirst, bandsProbe.parsesVerdictFirst]));
+  /* And the RULES have to agree with the user message. Handing a model rules that
+     end "Reply with ONLY the JSON" while asking it for lines is a contradiction,
+     and it measures as one: 4-in-18 unreadable against 2-in-18. Only the FORMAT
+     sentences are re-pointed — the shared rules stay intact for the GenAI path. */
+  check('t_local_points_prompt_shape — the local system prompt asks for LINES, not JSON',
+    bandsProbe.pointsSystemLines === true, 'local rules still say JSON');
+  check('t_local_points_prompt_shape — …while the judgement rules are still pointscore\'s own words',
+    bandsProbe.pointsSystemKeepsRules === true && bandsProbe.sharedRulesIntact === true,
+    JSON.stringify([bandsProbe.pointsSystemKeepsRules, bandsProbe.sharedRulesIntact]));
+
+  /* t_points_prompt_context (INV-GRADE-10) — points mode spends the bank's own
+     fields. `referenceAnswer` and `evidence` used to reach the model on the BAND
+     path only, so every assignment on the curve graded with less context than
+     one on the ladder, and the small model has the least to fall back on. */
+  const ctx = bandsProbe.bankContext;
+  check('t_points_prompt_context — the bank\'s full-credit answer reaches the points prompt',
+    /FULL-CREDIT ANSWER/.test(ctx) && /a reference answer here/.test(ctx), ctx.slice(0, 200));
+  check('t_points_prompt_context — …and the course\'s OWN verbatim quotes',
+    /WHAT THE COURSE ITSELF SAID/.test(ctx) && /the lecture said this/.test(ctx), ctx.slice(0, 300));
+  check('t_points_prompt_context — a bank carrying neither adds nothing',
+    bandsProbe.bankContextEmpty === '');
+
+  /* t_optional_points_framing (INV-GRADE-9 / INV-GRADE-11) — the optional points
+     are described to the model WITHOUT saying what they are worth. The old
+     wording ("an absent one is never a fault") is a scoring statement handed to a
+     model that rule 5 has just told it does not choose the grade, and measured
+     against qwen2.5-3b it read as permission to skip them: 72 of 72 optional
+     judgements came back `absent`, capping every student at 0.92.
+
+     The INV-GRADE-9 guarantee is unaffected, and the third assertion is why: it
+     lives in the ARITHMETIC, not the prompt. */
+  const ob = bandsProbe.pointsBlock;
+  check('t_optional_points_framing — the optional points carry no scoring language',
+    !/never a fault/.test(ob) && !/beyond what was asked/.test(ob)
+    && !/\braise\b|\blower\b|\bworth\b/.test(ob), ob.slice(0, 300));
+  check('t_optional_points_framing — …and are still asked for, by the same test as the core ones',
+    /SUPPORTING POINTS/.test(ob) && /exactly the same test/.test(ob)
+    && /O1: /.test(ob), ob.slice(0, 400));
 
   // Legacy numeric replies must still parse: a model that ignores the format is
   // still telling us something, and this ran in production for weeks.
@@ -4008,6 +4155,124 @@ print(json.dumps({
   // Buffered diagnostics die with a killed container; streamed ones do not.
   check('t_rate_limit_visible — retry lines are streamed as they happen, not only at the end',
     o.streamed > 0, `streamed=${o.streamed}`);
+}
+
+// ---------------------------------------------------------------------------
+// t_genai_model_offered (INV-DEPLOY-8) — a retired GenAI model is caught at BUILD
+// time, and named at GRADING time.
+//
+// Purdue replaces models in place (qwen3.6:27b -> qwen3.8:27b, 2026-09-23) and the
+// model ID is baked into every zip. A zip built against a retired ID uploads fine
+// and then fails every submission. Three claims:
+//   1. tools/genai-models.js reads the live list: 0 offered, 3 absent (with the
+//      nearest same-family IDs), 2 unreachable;
+//   2. the build REFUSES a model the service answers without, and does not refuse
+//      when the service cannot be asked (an outage says nothing about the model);
+//   3. the grader turns "Model not found" into a named cause with the remedy, fast,
+//      rather than a bare HTTP line or 25 minutes of retries.
+//
+// Served by a stub /api/models on 127.0.0.1 — this test makes no network calls.
+// ---------------------------------------------------------------------------
+{
+  const fs = require('fs');
+  const os = require('os');
+  const cp = require('child_process');
+  const ROOT = path.join(__dirname, '..');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'oralscale-models-'));
+  const portFile = path.join(tmp, 'port');
+  const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+  const stub = cp.spawn(process.execPath, ['-e', `
+    const fs = require('fs'), http = require('http');
+    const srv = http.createServer((req, res) => {
+      if (req.headers.authorization !== 'Bearer k' || !/^\\/api\\/models/.test(req.url)) {
+        res.writeHead(401).end('no'); return; }
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ data: [{ id: 'qwen3.8:27b' }, { id: 'gemma4:26b-a4b' }, { id: 'qwen3.8:4b' }] }));
+    });
+    srv.listen(0, '127.0.0.1', () => fs.writeFileSync(${JSON.stringify(portFile)}, String(srv.address().port)));
+  `], { stdio: 'ignore' });
+  let port = '';
+  for (let i = 0; i < 100 && !port; i++) {
+    if (fs.existsSync(portFile)) port = fs.readFileSync(portFile, 'utf8').trim();
+    if (!port) sleep(50);
+  }
+  try {
+    fs.mkdirSync(path.join(tmp, 'banks'));
+    fs.writeFileSync(path.join(tmp, 'banks', 'b.json'), JSON.stringify({
+      version: 1, bankId: 'b', questions: [
+        { id: 'q1', prompt: 'Why does the thing happen?', difficulty: 'core', keyPoints: ['a'] }],
+    }));
+    fs.writeFileSync(path.join(tmp, 'course.json'), JSON.stringify({
+      courseId: 'models-fixture', pseudonymSalt: 'cd'.repeat(16),
+      defaults: { limitSec: 120, questionsPerAttempt: 1, gradingBackend: 'genai' },
+      assignments: { 'quiz-01': { bank: 'banks/b.json', limitSec: 120 } },
+    }));
+    const envFor = (model, base = `http://127.0.0.1:${port}/`) => ({ ...process.env,
+      ORALSCALE_SECRET_MODELS_FIXTURE: 'models-fixture-unit-test-secret',
+      GENAI_STUDIO_API_KEY: 'k', GENAI_STUDIO_BASE_URL: base, GENAI_STUDIO_MODEL: model,
+      ORALSCALE_GENAI_MODELS_TIMEOUT_MS: '3000', ORALSCALE_ACK_COURSE_UNBACKED: '1' });
+    const ask = (model, base) => {
+      const r = spawnSync(process.execPath, [path.join(ROOT, 'tools', 'genai-models.js'),
+        '--course', path.join(tmp, 'course.json'), '--json'],
+      { encoding: 'utf8', env: envFor(model, base), timeout: 30000 });
+      try { return { status: r.status, ...JSON.parse(r.stdout.trim()) }; } catch { return { status: r.status }; }
+    };
+
+    const yes = ask('qwen3.8:27b');
+    check('t_genai_model_offered — an offered model is confirmed from the live list',
+      yes.status === 0 && yes.offered === true, JSON.stringify(yes));
+    const gone = ask('qwen3.6:27b');
+    check('t_genai_model_offered — a retired model is reported absent, same-size successor first',
+      gone.status === 3 && gone.offered === false && (gone.nearest || [])[0] === 'qwen3.8:27b',
+      JSON.stringify(gone));
+    const down = ask('qwen3.6:27b', 'http://127.0.0.1:1/');
+    check('t_genai_model_offered — an unreachable service is "could not ask", not "absent"',
+      down.status === 2 && down.offered === undefined, JSON.stringify(down));
+
+    const build = (model, base) => spawnSync(process.execPath,
+      [path.join(ROOT, 'tools', 'build-autograder.js'), path.join(tmp, 'course.json'), '--zip'],
+      { encoding: 'utf8', env: envFor(model, base), timeout: 600000 });
+    const refused = build('qwen3.6:27b');
+    check('t_genai_model_offered — the build REFUSES a model the service does not offer',
+      refused.status !== 0 && /does not offer the model 'qwen3\.6:27b'/.test(refused.stderr)
+        && /qwen3\.8:27b/.test(refused.stderr)
+        && !fs.existsSync(path.join(tmp, 'autograders')), refused.stderr.slice(-300));
+    const outage = build('qwen3.6:27b', 'http://127.0.0.1:1/');
+    check('t_genai_model_offered — …but an outage only warns: it says nothing about the model',
+      outage.status === 0 && /could not confirm that Purdue GenAI still offers/.test(outage.stderr),
+      String(outage.stderr).slice(-300));
+
+    const src = path.join(ROOT, 'autograder', 'source');
+    const py = spawnSync('python3', ['-c', [
+      'import sys, os, io, json, time',
+      `sys.path.insert(0, ${JSON.stringify(src)})`,
+      'os.environ.update(GENAI_STUDIO_API_KEY="k", GENAI_STUDIO_BASE_URL="http://x/",',
+      '    GENAI_STUDIO_MODEL="qwen3.6:27b", ORALSCALE_GENAI_JITTER_SEC="0")',
+      'import urllib.error, urllib.request',
+      'import grade as G',
+      'calls = [0]',
+      'def gone(*a, **k):',
+      '    calls[0] += 1',
+      '    raise urllib.error.HTTPError("http://x", 400, "Bad Request", {},',
+      '        io.BytesIO(b\'{"detail":"Model not found"}\'))',
+      'urllib.request.urlopen = gone',
+      't0 = time.time()',
+      'out = G._genai_batch([{"question": {"prompt": "p", "keyPoints": ["a"]}, "transcript": "t"}], [])',
+      'sys.stdout.write(json.dumps({"err": (out or {}).get("error", ""), "calls": calls[0],',
+      '  "elapsed": time.time() - t0}))',
+    ].join('\n')], { encoding: 'utf8', timeout: 120000 });
+    let o = {};
+    try { o = JSON.parse(String(py.stdout || '{}').trim()); } catch { /* below */ }
+    check('t_genai_model_offered — the grader names the retired model and the remedy',
+      /no longer offers the model 'qwen3\.6:27b'/.test(o.err || '')
+        && /genai-models\.js/.test(o.err || '') && /regrade/.test(o.err || ''),
+      String(o.err || py.stderr).slice(0, 200));
+    check('t_genai_model_offered — …in one request, not a retry loop',
+      o.calls === 1 && o.elapsed < 10, `calls=${o.calls} elapsed=${o.elapsed}`);
+  } finally {
+    try { stub.kill(); } catch { /* already gone */ }
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -4586,7 +4851,7 @@ print(json.dumps({
   const ag = fs.readFileSync(
     path.join(__dirname, '..', 'autograder', 'source', 'run_autograder.py'), 'utf8');
   const blk = ag.slice(ag.indexOf('ledger = ["The codes you were asked'),
-    ag.indexOf('out=CODES_HELP.format(which=which, ledger=ledger)') + 60);
+    ag.indexOf('out=CODES_HELP.format(which=which, outcome=outcome, ledger=ledger)') + 60);
 
   check('t_codes_ledger — EVERY code is listed, not only the missing ones',
     /for b in bounds:/.test(blk) && !/for b in missing/.test(blk));
@@ -4595,7 +4860,7 @@ print(json.dumps({
     && /protocol\.speak_code\(b\["code"\]\)/.test(blk)
     && /"heard" if b\["ok"\] else "NOT HEARD"/.test(blk));
   check('t_codes_ledger — it is STUDENT-visible, and points them at the transcript',
-    /visible=True,\n *out=CODES_HELP\.format\(which=which, ledger=ledger\)/.test(ag)
+    /visible=True,\n *out=CODES_HELP\.format\(which=which, outcome=outcome, ledger=ledger\)/.test(ag)
     && /Find the digits marked NOT HEARD in the automatic transcript/.test(ag));
   // If we are wrong, the student has to be able to say so. That sentence is the
   // difference between a check they can audit and an accusation they cannot.
@@ -4636,8 +4901,20 @@ print(json.dumps({
     courseId: 'frozen-fixture', pseudonymSalt: 'cd'.repeat(16),
     defaults: { limitSec: 120, questionsPerAttempt: 1 },
     assignments: {
-      'quiz-01-live': { bank: 'banks/b.json', limitSec: 120, frozen: true },
-      'quiz-02-new': { bank: 'banks/b.json', limitSec: 120 },
+      'quiz-01-live': {
+        bank: 'banks/b.json', limitSec: 120, frozen: true,
+        regrade: { id: 'curve-v2', note: 'unit fixture',
+          scoring: { mode: 'points', table: [0, 0.7, 1.0] } },
+      },
+      // A variant that declares no `scoring` is a rebuild wearing a new filename.
+      'quiz-02-new': { bank: 'banks/b.json', limitSec: 120, regrade: { id: 'empty' } },
+      // A variant that is ITSELF frozen: its zip is uploaded and is currently
+      // re-marking the cohort, so it has the same claim on being left alone.
+      'quiz-03-regrading': {
+        bank: 'banks/b.json', limitSec: 120, frozen: true,
+        regrade: { id: 'done', frozen: true, sha256: 'abc123',
+          scoring: { mode: 'points', table: [0, 1] } },
+      },
     },
   }));
   /* --zip, because that is where packaging — and therefore the overwrite this
@@ -4674,9 +4951,426 @@ print(json.dumps({
     // on ordinary work.
     const one = run('--assignment', 'quiz-02-new');
     check('t_frozen_not_repackaged — an unfrozen assignment is unaffected', one.status === 0);
+
+    /* t_regrade_variant (INV-DEPLOY-6) — a SECOND grader for a released
+       assignment, under its own filename. The released zip (built by `forced`
+       above) must come through byte-identical: that is the whole difference
+       between a regrade variant and --repackage-frozen. */
+    const dir = path.join(tmp, 'autograders');
+    const stem = `frozen-fixture-quiz-01-live-oralscale-v${require('../package.json').version}`;
+    const released = path.join(dir, `${stem}.zip`);
+    const beforeBytes = fs.readFileSync(released);
+    const rg = run('--assignment', 'quiz-01-live', '--regrade', 'curve-v2');
+    const variant = path.join(dir, `${stem}-regrade-curve-v2.zip`);
+    check('t_regrade_variant — a declared variant builds for a FROZEN assignment, no override',
+      rg.status === 0 && fs.existsSync(variant), rg.stderr);
+    check('t_regrade_variant — the released zip is left byte-identical',
+      fs.readFileSync(released).equals(beforeBytes));
+    check('t_regrade_variant — the build says what uploading it would cost',
+      /REGRADE VARIANT/.test(rg.stdout) && /re-marks EVERY submission/.test(rg.stdout));
+    {
+      const emb = spawnSync('unzip', ['-p', variant, 'course.json'], { encoding: 'utf8' });
+      const cfg = JSON.parse(emb.stdout || '{}');
+      const a = (cfg.assignments || {})['quiz-01-live'] || {};
+      check('t_regrade_variant — same pinned assignment, same bank, only `scoring` moved',
+        Object.keys(cfg.assignments || {}).join() === 'quiz-01-live'
+        && a.bank === 'banks/b.json' && JSON.stringify(a.scoring)
+          === JSON.stringify({ mode: 'points', table: [0, 0.7, 1] })
+        && a.regrade === undefined, JSON.stringify(a.scoring));
+    }
+    const noAsg = run('--regrade', 'curve-v2');
+    check('t_regrade_variant — --regrade without --assignment is refused',
+      noAsg.status !== 0 && /--regrade needs --assignment/.test(noAsg.stderr));
+    const bogus = run('--assignment', 'quiz-01-live', '--regrade', 'no-such');
+    check('t_regrade_variant — an undeclared variant id is refused',
+      bogus.status !== 0 && /declares no regrade variant/.test(bogus.stderr));
+    const empty = run('--assignment', 'quiz-02-new', '--regrade', 'empty');
+    check('t_regrade_variant — a variant with no `scoring` is refused',
+      empty.status !== 0 && /is not a regrade/.test(empty.stderr));
+    /* A regrade in flight freezes too: rebuilding it would mark half the cohort
+       with different code, over submissions that already carry marks. */
+    const frozenVar = run('--assignment', 'quiz-03-regrading', '--regrade', 'done');
+    check('t_regrade_variant — a FROZEN variant is refused, and names the artifact',
+      frozenVar.status !== 0 && /is FROZEN and was not rebuilt/.test(frozenVar.stderr)
+      && /sha256 abc123/.test(frozenVar.stderr), frozenVar.stderr.slice(0, 120));
+    const frozenForced = run('--assignment', 'quiz-03-regrading', '--regrade', 'done',
+      '--repackage-frozen');
+    check('t_regrade_variant — …and re-cutting the WHOLE regrade is the way through',
+      frozenForced.status === 0, frozenForced.stderr.slice(0, 120));
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
+}
+
+
+// ---------------------------------------------------------------------------
+// t_zip_env_matches_backend (INV-PRIV-6, INV-DEPLOY-3) — one zip holds ONE
+// assignment, so the environment baked into it must follow THAT assignment's
+// backend, not the course's.
+//
+// The GenAI key ships in plaintext, readable by anyone with staff access to the
+// Gradescope course. Deciding its inclusion course-wide meant one genai
+// assignment put the key into every OTHER assignment's zip, including ones that
+// grade locally and could never use it. The mirror case costs build time
+// instead: a genai-only zip baking in a ~2 GB GGUF it can never reach.
+// ---------------------------------------------------------------------------
+{
+  const fs = require('fs');
+  const os = require('os');
+  const ROOT = path.join(__dirname, '..');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'oralscale-mixed-'));
+  fs.mkdirSync(path.join(tmp, 'banks'));
+  fs.writeFileSync(path.join(tmp, 'banks', 'b.json'), JSON.stringify({
+    version: 1, bankId: 'b', questions: [
+      { id: 'q1', prompt: 'Why does the thing happen?', difficulty: 'core', keyPoints: ['a'] }],
+  }));
+  fs.writeFileSync(path.join(tmp, 'course.json'), JSON.stringify({
+    courseId: 'mixed-backend-fixture', pseudonymSalt: 'ef'.repeat(16),
+    defaults: { limitSec: 120, questionsPerAttempt: 1 },
+    assignments: {
+      'quiz-ai': { bank: 'banks/b.json', limitSec: 120, gradingBackend: 'genai' },
+      'quiz-local': { bank: 'banks/b.json', limitSec: 120, gradingBackend: 'local' },
+    },
+  }));
+  const env = { ...process.env,
+    ORALSCALE_SECRET_MIXED_BACKEND_FIXTURE: 'mixed-backend-unit-test-secret',
+    ORALSCALE_ACK_COURSE_UNBACKED: '1',
+    GENAI_STUDIO_API_KEY: 'sk-unit-fixture-key',
+    GENAI_STUDIO_BASE_URL: 'https://genai.invalid/v1',
+    GENAI_STUDIO_MODEL: 'unit-fixture-model' };
+  // An exported skip would override the per-assignment decision under test.
+  delete env.ORALSCALE_SKIP_LOCAL_LLM;
+  const r = spawnSync(process.execPath,
+    [path.join(ROOT, 'tools', 'build-autograder.js'), path.join(tmp, 'course.json'), '--zip'],
+    { encoding: 'utf8', env });
+  try {
+    check('t_zip_env_matches_backend — a mixed-backend course packages both assignments',
+      r.status === 0, r.stderr.slice(0, 200));
+    const stem = `mixed-backend-fixture-%s-oralscale-v${require('../package.json').version}.zip`;
+    const secretEnv = (aid) => spawnSync('unzip',
+      ['-p', path.join(tmp, 'autograders', stem.replace('%s', aid)), 'secret.env'],
+      { encoding: 'utf8' }).stdout || '';
+    const local = secretEnv('quiz-local');
+    const genai = secretEnv('quiz-ai');
+
+    /* THE ONE THAT MATTERS: a locally-graded zip must not carry the key just
+       because a sibling assignment uses GenAI. */
+    check('t_zip_env_matches_backend — the local zip carries NO GenAI credential',
+      local.length > 0 && !/GENAI_STUDIO_/.test(local), local);
+    check('t_zip_env_matches_backend — …and declares the local grader required',
+      /^ORALSCALE_LOCAL_REQUIRED=1$/m.test(local)
+      && !/^ORALSCALE_SKIP_LOCAL_LLM=/m.test(local), local);
+
+    check('t_zip_env_matches_backend — the genai zip DOES carry all three credentials',
+      /^GENAI_STUDIO_API_KEY=sk-unit-fixture-key$/m.test(genai)
+      && /^GENAI_STUDIO_BASE_URL=https:\/\/genai.invalid\/v1$/m.test(genai)
+      && /^GENAI_STUDIO_MODEL=unit-fixture-model$/m.test(genai), genai);
+    check('t_zip_env_matches_backend — …and skips the ~2 GB local model it cannot use',
+      /^ORALSCALE_SKIP_LOCAL_LLM=1$/m.test(genai)
+      && /^ORALSCALE_LOCAL_REQUIRED=0$/m.test(genai), genai);
+
+    // Both zips are pinned to their own assignment, and each embeds only it.
+    const embedded = (aid) => JSON.parse(spawnSync('unzip',
+      ['-p', path.join(tmp, 'autograders', stem.replace('%s', aid)), 'course.json'],
+      { encoding: 'utf8' }).stdout || '{}');
+    check('t_zip_env_matches_backend — each zip embeds only its own assignment',
+      Object.keys(embedded('quiz-local').assignments || {}).join() === 'quiz-local'
+      && Object.keys(embedded('quiz-ai').assignments || {}).join() === 'quiz-ai');
+
+    // And the build says so, rather than leaving the instructor to unzip it.
+    check('t_zip_env_matches_backend — the build log says which zip got the key',
+      /backend local: the local model is bundled, and the GenAI key is NOT in this zip/
+        .test(r.stdout)
+      && /backend genai: the GenAI key IS in this zip/.test(r.stdout));
+    check('t_zip_env_matches_backend — …and sizes the container per assignment',
+      /\*\*4\.0 CPU \/ 6\.0 GB RAM\*\* for quiz-local/.test(r.stdout)
+      && /\*\*2\.0 CPU \/ 3\.0 GB RAM\*\* for quiz-ai/.test(r.stdout));
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// t_regrade_backend_variant (INV-DEPLOY-6) — the other thing a variant may
+// replace. A course whose assignments all grade with `genai` builds a zip that
+// carries the GenAI credentials and NOT the 2 GB local model, because with no
+// grader fallbacks (INV-GRADE-1) a model nothing can reach for is dead weight.
+// A variant that flips ONE assignment to `local` has to move both of those with
+// it — and it only can if the override is applied before the build environment
+// is derived, which is the bug this test pins. A zip that asks for a local model
+// it does not carry fails at GRADING time, one submission at a time, rather than
+// at build time where a mistake is still cheap.
+// ---------------------------------------------------------------------------
+{
+  const fs = require('fs');
+  const os = require('os');
+  const ROOT = path.join(__dirname, '..');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'oralscale-backend-'));
+  fs.mkdirSync(path.join(tmp, 'banks'));
+  fs.writeFileSync(path.join(tmp, 'banks', 'b.json'), JSON.stringify({
+    version: 1, bankId: 'b', questions: [
+      { id: 'q1', prompt: 'Why does the thing happen?', difficulty: 'core', keyPoints: ['a'] }],
+  }));
+  fs.writeFileSync(path.join(tmp, 'course.json'), JSON.stringify({
+    courseId: 'backend-fixture', pseudonymSalt: 'ef'.repeat(16),
+    defaults: { limitSec: 120, questionsPerAttempt: 1, gradingBackend: 'genai' },
+    assignments: {
+      'quiz-01': {
+        bank: 'banks/b.json', limitSec: 120,
+        scoring: { mode: 'points', table: [0, 0.7, 1.0] },
+        regrade: { id: 'local-qwen', gradingBackend: 'local', note: 'genai was rate limited' },
+      },
+    },
+  }));
+  const run = (...extra) => spawnSync(process.execPath,
+    [path.join(ROOT, 'tools', 'build-autograder.js'), path.join(tmp, 'course.json'),
+      '--zip', ...extra],
+    { encoding: 'utf8', env: { ...process.env,
+      ORALSCALE_SECRET_BACKEND_FIXTURE: 'backend-fixture-unit-test-secret',
+      GENAI_STUDIO_API_KEY: 'k', GENAI_STUDIO_BASE_URL: 'https://stub/', GENAI_STUDIO_MODEL: 'm',
+      ORALSCALE_ACK_COURSE_UNBACKED: '1' } });
+  const stem = `backend-fixture-quiz-01-oralscale-v${require('../package.json').version}`;
+  const embedded = (zip) => JSON.parse(
+    (spawnSync('unzip', ['-p', zip, 'course.json'], { encoding: 'utf8' }).stdout || '{}'));
+  try {
+    const rel = run('--assignment', 'quiz-01');
+    check('t_regrade_backend_variant — a genai-only course does not bundle the local model',
+      rel.status === 0 && /no zip bundles the local model|local model is not bundled/i.test(rel.stdout), rel.stderr.slice(0, 200));
+
+    const rg = run('--assignment', 'quiz-01', '--regrade', 'local-qwen');
+    const variant = path.join(tmp, 'autograders', `${stem}-regrade-local-qwen.zip`);
+    check('t_regrade_backend_variant — a backend-only variant builds, no `scoring` needed',
+      rg.status === 0 && fs.existsSync(variant), rg.stderr.slice(0, 200));
+    check('t_regrade_backend_variant — …and the log names what moved',
+      /regrade variant "local-qwen": `gradingBackend` replaced/.test(rg.stdout), rg.stdout.slice(-400));
+    /* The point of the whole test: the model IS bundled this time, which can
+       only be true if the override landed before the environment was derived. */
+    check('t_regrade_backend_variant — the variant DOES bundle the local model',
+      !/no zip bundles the local model|local model is not bundled/i.test(rg.stdout), rg.stdout.slice(-400));
+
+    const a = (embedded(variant).assignments || {})['quiz-01'] || {};
+    check('t_regrade_backend_variant — same pin, same bank, only the backend moved',
+      Object.keys(embedded(variant).assignments || {}).join() === 'quiz-01'
+      && a.bank === 'banks/b.json' && a.gradingBackend === 'local'
+      && JSON.stringify(a.scoring) === JSON.stringify({ mode: 'points', table: [0, 0.7, 1.0] })
+      && a.regrade === undefined, JSON.stringify(a));
+    check('t_regrade_backend_variant — the released zip still grades with genai',
+      (embedded(path.join(tmp, 'autograders', `${stem}.zip`)).assignments || {})['quiz-01']
+        .gradingBackend === undefined);
+
+    /* A variant that names NEITHER setting is still a rebuild wearing a new
+       filename, and the refusal now has to say so in terms of both. */
+    const course = JSON.parse(fs.readFileSync(path.join(tmp, 'course.json'), 'utf8'));
+    course.assignments['quiz-01'].regrade = { id: 'nothing' };
+    fs.writeFileSync(path.join(tmp, 'course.json'), JSON.stringify(course));
+    const empty = run('--assignment', 'quiz-01', '--regrade', 'nothing');
+    check('t_regrade_backend_variant — a variant replacing neither setting is refused',
+      empty.status !== 0 && /replaces nothing/.test(empty.stderr)
+      && /`scoring` nor `gradingBackend`/.test(empty.stderr), empty.stderr.slice(0, 200));
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// t_local_retry (INV-GRADE-4/11) — the LOCAL path retries an unusable reply.
+//
+// It did not until 2026-09-17: `_grade_locally` called the model once and moved
+// on, while the GenAI path beside it had a four-rung ladder. One reply the parser
+// could not read left that question ungraded, and one ungraded question fails the
+// whole submission under INV-GRADE-1 — so a formatting slip on one question in
+// five cost a student everything, which is precisely the error direction
+// INV-GRADE-11 forbids.
+//
+// Driven by stubbing `localmodel.grade_one`, because what is being asserted is
+// the LOOP, not the model: that it re-asks, that it eventually gives up, and that
+// what it adds on the way is only about format.
+// ---------------------------------------------------------------------------
+{
+  const out = JSON.parse(py(`
+import json, sys
+import grade as G, localmodel as LM
+
+q = {"prompt": "p", "keyPoints": ["a"], "bonusPoints": []}
+items = [{"question": q, "transcript": "t", "outbound": "t"}]
+
+calls = []
+def stub(fail_first):
+    def f(question, transcript, fence, ladder=None, policy=None, reminder=False, temperature=0.0):
+        calls.append((reminder, temperature))
+        if len(calls) <= fail_first:
+            return {"error": "could not parse"}
+        return {"score": 0.8, "feedback": "ok", "covered": [], "missed": [], "backend": "stub"}
+    return f
+
+res = {}
+# recovers on the second attempt, and says so
+LM.grade_one = stub(1); calls.clear()
+log, results = [], {0: None}
+done = G._grade_locally(items, [0], results, log)
+res["recovered"] = (done == [0] and results[0]["score"] == 0.8)
+res["attempts"] = len(calls)
+res["rung1Plain"] = calls[0] == (False, 0.0)
+res["rung2Reminds"] = calls[1][0] is True and calls[1][1] == 0.0
+res["logsRetry"] = any("needed 2 attempts" in x for x in log)
+
+# never readable -> still fails, after the cap. A ladder that always produces a
+# score has become the fallback chain INV-GRADE-1 forbids.
+LM.grade_one = stub(99); calls.clear()
+log2, results2 = [], {0: None}
+done2 = G._grade_locally(items, [0], results2, log2)
+res["stillFails"] = (done2 == [] and results2[0] is None)
+res["cap"] = len(calls)
+# Only the FINAL attempt samples off zero. Determinism is a fairness property on
+# every ordinary call; by the last rung the alternative is no grade at all for
+# the whole submission, which is the trade INV-GRADE-11 settles.
+res["temps"] = [t for _, t in calls]
+res["onlyLastRungSamples"] = (all(t == 0.0 for t in res["temps"][:-1])
+                              and res["temps"][-1] > 0.0)
+res["logsGaveUp"] = any("after 4 attempts" in x for x in log2)
+
+# the reminder is about FORMAT and nothing else
+r = LM.POINTS_REMINDER.lower()
+res["formatOnly"] = ("format" in r
+                     and not any(w in r for w in ("rubric", "point", "score", "band",
+                                                  "credit", "verdict is", "correct")))
+print(json.dumps(res))`));
+  check('t_local_retry — an unusable reply is re-asked, and the retry succeeds',
+    out.recovered && out.attempts === 2 && out.logsRetry, JSON.stringify(out));
+  check('t_local_retry — rung 1 is plain and rung 2 carries the reminder (temperature 0 needs the request to differ)',
+    out.rung1Plain && out.rung2Reminds, JSON.stringify(out));
+  check('t_local_retry — a model that never parses still FAILS, after the cap',
+    out.stillFails && out.cap === 4 && out.logsGaveUp, JSON.stringify(out));
+  check('t_local_retry — every rung but the last is deterministic; the last one samples differently',
+    out.onlyLastRungSamples === true, JSON.stringify(out.temps));
+  check('t_local_retry — the reminder mentions only output format, never the rubric or the score',
+    out.formatOnly === true, JSON.stringify(out));
+
+  /* t_local_fills_missing_lines (INV-GRADE-4/11) — the 3B's commonest failure is
+     not a mangled reply but a SHORT one: it writes four of five lines and moves
+     on. Re-asking for the WHOLE answer mostly reproduces the omission, because at
+     temperature 0 nothing about the request changed. So the narrow rung comes
+     first — name the ids that are missing and ask only for those, keeping the
+     lines it did give exactly as they were. Format recovery, not a second
+     opinion. */
+  const fm = JSON.parse(py(`
+import json
+import localmodel as LM
+q = {"prompt": "p", "keyPoints": ["idea one", "idea two"], "bonusPoints": ["idea three"]}
+asked = {}
+def fake_chat(url, prompt, system_text=None, max_tokens=None):
+    asked["prompt"] = prompt
+    return "O1 | partly | the words they used"
+LM._chat_via_url = fake_chat
+LM.local_url = lambda: "http://stub"
+short = {"points": [{"id": "R1", "verdict": "stated", "evidence": "a"},
+                    {"id": "R2", "verdict": "absent", "evidence": ""}],
+         "falseClaims": [], "novelPoints": [], "feedback": "f"}
+filled = LM._fill_missing(dict(short, points=list(short["points"])), q, "transcript", "F", "sys")
+got = {p["id"]: p["verdict"] for p in filled["points"]}
+res = {
+  "filled": got == {"R1": "stated", "R2": "absent", "O1": "partly"},
+  "keptOriginals": got.get("R1") == "stated" and got.get("R2") == "absent",
+  "asksOnlyMissing": "O1:" in asked["prompt"] and "R1:" not in asked["prompt"],
+  "carriesTranscript": "transcript" in asked["prompt"],
+}
+# nothing to fill -> no call at all
+asked.clear()
+complete = {"points": [{"id": i, "verdict": "stated", "evidence": "a"} for i in ("R1","R2","O1")],
+            "falseClaims": [], "novelPoints": [], "feedback": "f"}
+LM._fill_missing(complete, q, "t", "F", "sys")
+res["noCallWhenComplete"] = ("prompt" not in asked)
+# a reply with no lines at all is left alone rather than half-invented
+res["emptyLeftAlone"] = LM._fill_missing({"points": []}, q, "t", "F", "sys")["points"] == []
+# …and a reply whose "points" came back in a shape this was not written for — a
+# 3B has returned an OBJECT, {"R1": "stated"} — is handed on untouched rather
+# than crashing the container. read_answer rejects it; the ladder re-asks.
+asked.clear()
+res["objectShapeSafe"] = (LM._fill_missing({"points": {"R1": "stated"}}, q, "t", "F", "sys")
+                          == {"points": {"R1": "stated"}} and "prompt" not in asked)
+print(json.dumps(res))`));
+  check('t_local_fills_missing_lines — a dropped line is re-asked for by id, and merged',
+    fm.filled && fm.keptOriginals, JSON.stringify(fm));
+  check('t_local_fills_missing_lines — …asking only for the missing ids, with the transcript still in view',
+    fm.asksOnlyMissing && fm.carriesTranscript, JSON.stringify(fm));
+  check('t_local_fills_missing_lines — a complete reply costs no extra call',
+    fm.noCallWhenComplete === true, JSON.stringify(fm));
+  check('t_local_fills_missing_lines — a reply with no lines at all is left to the ladder, never half-invented',
+    fm.emptyLeftAlone === true, JSON.stringify(fm));
+  check('t_local_fills_missing_lines — an unexpected reply SHAPE is handed on, not crashed on',
+    fm.objectShapeSafe === true, JSON.stringify(fm));
+}
+
+// ---------------------------------------------------------------------------
+// t_points_fixtures (INV-GRADE-3/10/11) — the points-mode eval's GROUND TRUTH.
+//
+// `tools/eval/points-bench.py` is only as trustworthy as the answers it feeds
+// the grader. Every number it reports rests on the claim that a synthesised
+// answer conveys exactly the points its vector says it does, and on the claim
+// that a clean answer and its messy twin differ in DELIVERY and in nothing else.
+// Neither is self-evident, so both are asserted here: a fixture bug would
+// otherwise show up as a grader defect and be chased in the wrong file.
+// ---------------------------------------------------------------------------
+{
+  const probe = JSON.parse(py(`
+import json, random, sys
+sys.path.insert(0, ${JSON.stringify(path.join(__dirname, 'eval'))})
+import points_fixtures as F
+q = {"id": "t-1", "prompt": "p",
+     "keyPoints": ["the stakeholder knows which problem is worth solving",
+                   "an unvalidated idea is only a hypothesis"],
+     "bonusPoints": ["Noting that building first makes the idea expensive to change",
+                     "Observing that liking your own idea makes this hard"],
+     "commonErrors": ["Assuming a polite stakeholder has confirmed the idea is valuable"]}
+cases = F.cases(q, random.Random(1))
+by = {c["case"].split("/", 1)[1]: c for c in cases}
+def words(t):
+    return set(w.strip(".,!?").lower() for w in t.split())
+# A distinctive content word from each point, absent from every other point.
+marks = {"R1": "stakeholder", "R2": "hypothesis", "O1": "expensive", "O2": "liking"}
+out = {
+  # bank voice is stripped: no optional point still opens with its gerund frame
+  "noBankVoice": not any(a.lower().startswith(("noting", "observing"))
+                         for a in [by["everything/clean"]["answer"]]),
+  # every STATED point's idea is present, and every ABSENT point's is not
+  "statedPresent": all(marks[p] in words(by["core-all/clean"]["answer"])
+                       for p in ("R1", "R2")),
+  "absentMissing": not any(marks[p] in words(by["core-all/clean"]["answer"])
+                           for p in ("O1", "O2")),
+  "everythingHasAll": all(marks[p] in words(by["everything/clean"]["answer"])
+                          for p in marks),
+  "nothingIsEmpty": not any(m in words(by["nothing/clean"]["answer"]) for m in marks.values()),
+  # the messy twin carries the SAME content: same vector, same marker words
+  "twinSameVector": by["core-all/clean"]["vector"] == by["core-all/messy"]["vector"],
+  "twinSameContent": all(marks[p] in words(by["core-all/messy"]["answer"]) for p in ("R1", "R2")),
+  "twinDiffers": by["core-all/clean"]["answer"] != by["core-all/messy"]["answer"],
+  # …and is recognisably speech
+  "twinIsMessy": any(f in by["everything/messy"]["answer"] for f in ("um,", "uh,", "like,", "--")),
+  # verbatim reuse would measure string matching, so nothing may be copied whole
+  "notVerbatim": all(kp not in by["everything/clean"]["answer"] for kp in q["keyPoints"]),
+  # the false-claim case ASSERTS the misconception rather than naming it
+  "fcAsserts": "assuming" not in by["falseclaim/clean"]["answer"].lower()
+               and "polite" in by["falseclaim/clean"]["answer"].lower(),
+  "fcKeepsVector": by["falseclaim/clean"]["vector"]["R1"] == "stated",
+  # seeded: a rerun is byte-identical, or two graders cannot be compared paired
+  "deterministic": [c["answer"] for c in F.cases(q, random.Random(9))]
+                   == [c["answer"] for c in F.cases(q, random.Random(1))],
+  "mathSpoken": F.speak_math("rank of $A$ with $\\Sigma$") == "rank of A with sigma",
+}
+print(json.dumps(out))`));
+  const bad = Object.entries(probe).filter(([, v]) => v !== true).map(([k]) => k);
+  check('t_points_fixtures — a synthesised answer conveys exactly the points its vector claims',
+    probe.statedPresent && probe.absentMissing && probe.everythingHasAll && probe.nothingIsEmpty,
+    bad.join(', '));
+  check('t_points_fixtures — …in student voice, never the bank text pasted',
+    probe.notVerbatim && probe.noBankVoice, bad.join(', '));
+  check('t_points_fixtures — the messy twin is the same content, differently delivered',
+    probe.twinSameVector && probe.twinSameContent && probe.twinDiffers && probe.twinIsMessy,
+    bad.join(', '));
+  check('t_points_fixtures — a false-claim case ASSERTS the misconception, not names it',
+    probe.fcAsserts && probe.fcKeepsVector, bad.join(', '));
+  check('t_points_fixtures — generation is seeded, so two graders see identical inputs',
+    probe.deterministic && probe.mathSpoken, bad.join(', '));
 }
 
 // ---------------------------------------------------------------------------
@@ -4704,13 +5398,90 @@ res = {
   "trade": band(q2, [S,A,S,S,A]), "noReq": band(q2, [A,A,S,S,S]), "nothing": band(q2, [A,A,A,A,A]),
   "half": band(q2, [H,S,A,A,A]), "contraReq": band(q2, [C,S,S,S,A]),
   "q3reqOnly": band(q3, [S,S,S,A,A,A]), "q3plus1": band(q3, [S,S,S,S,A,A]),
-  "falseFull": band(q2, [S,S,S,S,S], [{"quote": "x", "why": "y"}]),
-  "unquotedClaim": band(q2, [S,S,S,S,S], [{"quote": "", "why": "y"}]),
+  # A REAL false claim: quoted, and with a reason of its own. Both are required
+  # (INV-GRADE-11) -- a penalty the grader cannot justify is a mark taken off
+  # work that was done.
+  "falseFull": band(q2, [S,S,S,S,S], [{"quote": "the rank is three",
+                                       "why": "The rank is two here, because only two singular values are nonzero."}]),
+  "unquotedClaim": band(q2, [S,S,S,S,S], [{"quote": "",
+                                           "why": "The rank is two here, because only two singular values are nonzero."}]),
+  # A false claim whose "why" is the quote back again carries no reason, so it
+  # cannot support a penalty. Found on every question of a real Quiz 3
+  # submission: full marks earned, then capped to 0.85 five times over by a
+  # "false claim" that was neither false nor argued.
+  "restatedClaim": band(q2, [S,S,S,S,S], [{"quote": "the values are ordered 3 1 0",
+                                           "why": "The values are ordered, 3, 1, 0."}]),
+  "reasonedClaim": band(q2, [S,S,S,S,S], [{"quote": "the rank is three",
+                                           "why": "The rank is two here, because only two singular values are nonzero."}]),
   "unquotedContra": band(q2, [C,S,S,S,A], ev=""),
   "gap": P.read_answer({"points": [{"id": "R1", "verdict": "stated"}]}, q2) is None,
   "junkVerdict": P.read_answer({"points": [{"id": i, "verdict": "wrong"} for i in ("R1","R2","O1","O2","O3")]}, q2) is None,
   "bandsDefault": [P.resolve_policy(None), P.resolve_policy("bands"), P.resolve_policy({"mode": "bands"})],
 }
+# t_points_reply_trailing_text — a small model answers correctly and then keeps
+# talking. The first BALANCED object is the answer; everything after it is noise.
+# Observed on a real Quiz 3 submission: qwen2.5-3b emitted a complete object then
+# appended a truncated pretty-printed copy, and the old greedy first-brace-to-last
+# slice threw the good judgement away on all five questions.
+_one = json.dumps({"points": [{"id": i, "verdict": "stated", "evidence": "their words"}
+                              for i in ("R1", "R2", "O1", "O2", "O3")], "feedback": "f"})
+# The INV-GRADE-9 guarantee lives HERE, not in the prompt: the optional weight is
+# ADDED and never subtracted, so upgrading any optional point can only ever move
+# the mark UP. That is what makes it safe to drop the scoring language the small
+# model was reading as permission to skip them -- the prompt was never what
+# enforced it.
+#
+# NOT stated as "the same as a question with no optional points at all": that is
+# false, and deliberately so. Thresholds are relative and clamp to the optional
+# weight on offer, so a question that offers depth puts its top band higher --
+# the instructor's policy under INV-GRADE-9, not a penalty.
+_mono = []
+for _req in ([S,S], [S,H], [A,S]):
+    _prev = None
+    for _o in ([A,A,A], [H,A,A], [S,A,A], [S,H,A], [S,S,A], [S,S,S]):
+        _sc = band(q2, _req + _o)[2]
+        _mono.append(_prev is None or _sc >= _prev - 1e-9)
+        _prev = _sc
+res["optOnlyRaises"] = all(_mono)
+# t_grounded_evidence probes. The same five verdicts each time; the only thing
+# that changes is whether the quotes are words the student actually said.
+_said = ("I think the stakeholder is the one who knows what problem is worth solving, "
+         "and an idea you have not checked is really just a hypothesis about them.")
+def _ground(evs, transcript, on):
+    ids = [p for p, _, _ in P.point_list(q2)]
+    a = {"points": [{"id": i, "verdict": "stated", "evidence": e} for i, e in zip(ids, evs)],
+         "falseClaims": []}
+    pol2 = P.resolve_policy({"mode": "points", "requireGroundedEvidence": on})
+    r = P.compute(q2, P.read_answer(a, q2), pol2, L, transcript)
+    return [r["points"]["total"], r["band"], r["score"]]
+_fake = ["the eigenvalues determine the spectral radius of the operator"] * 5
+_real = ["the stakeholder is the one who knows what problem is worth solving"] * 5
+res["ungroundedOff"] = _ground(_fake, _said, False)
+res["ungroundedOn"] = _ground(_fake, _said, True)
+res["groundedOn"] = _ground(_real, _said, True)
+res["noTranscript"] = _ground(_fake, None, True)
+# The realistic shape: the core points quoted from the answer, the optional ones
+# quoted from thin air -- which is exactly the pattern the bench measured.
+res["mixedOn"] = _ground(_real[:2] + _fake[:3], _said, True)
+res["mixedOff"] = _ground(_real[:2] + _fake[:3], _said, False)
+# A quote the model reformatted -- filler dropped, punctuation changed -- is
+# still grounded. An exact-substring test would reject honest quotes and
+# manufacture the negative mistakes this is meant to avoid.
+res["looseMatch"] = P._grounded("stakeholder knows which problem worth solving", _said)
+res["replyShapes"] = {
+    "clean":     P.parse_reply(_one) is not None,
+    "trailing":  P.parse_reply(_one + ' The JSON again: {"points": [{"id"') is not None,
+    "leading":   P.parse_reply("Here is my judgement: " + _one) is not None,
+    "wrapped":   P.parse_reply('{"answers":[' + _one + ']} Hope that helps!') is not None,
+    "notAnswer": P.parse_reply('{"note":"thinking"} ' + _one) is not None,
+    "junk":      P.parse_reply("I could not grade this.") is None,
+    "truncated": P.parse_reply('{"points": [{"id": "R1", "verdict"') is None,
+}
+# …and it still reaches a real mark end to end, not merely a parse: the object
+# buried in the chatter marks exactly the same as the same verdicts handed over
+# directly.
+_chatty = P.compute(q2, P.read_answer(P.parse_reply(_one + " That is my answer.")[0], q2), pol, L)
+res["trailingGrades"] = [_chatty["points"]["total"], _chatty["band"], _chatty["score"]]
 bad = []
 for spec in ({"mode": "pts"}, {"mode": "points", "zz": 1}, {"mode": "points", "requiredWeight": -1},
              {"mode": "points", "strongAt": 2, "fullAt": 1}, {"mode": "points", "falseClaimCap": "meh"}, 7):
@@ -4775,12 +5546,68 @@ print(json.dumps(res))
     eq(out.q3reqOnly, [6, 'partial', 0.8]) && eq(out.q3plus1, [7, 'strong', 0.92]));
   check('t_points_scoring — an uncorrected false claim caps a full answer at partial',
     eq(out.falseFull, [7, 'partial', 0.8]));
+  /* t_grounded_evidence (INV-GRADE-10/11) — an award needs evidence too, when the
+     course asks for it. Measured over 449 credited verdicts: a quote NOT in the
+     transcript accompanied a FALSE credit 97% of the time, against 35% for a
+     grounded one, so refusing those removes 42% of the false credit for 3
+     correct credits in 449. OFF by default all the same — those 3 are negative
+     mistakes, and whether the trade is worth taking is the instructor's call. */
+  check('t_grounded_evidence — OFF by default: a quote of nothing still earns its credit',
+    eq(out.ungroundedOff, [7, 'full', 1.0]), JSON.stringify(out.ungroundedOff));
+  check('t_grounded_evidence — ON: a verdict quoting words the student never said is scored absent',
+    eq(out.ungroundedOn, [0, 'none', 0]), JSON.stringify(out.ungroundedOn));
+  check('t_grounded_evidence — ON: it withdraws only the ungrounded credit, not the answer',
+    eq(out.mixedOn, [4, 'partial', 0.8]) && eq(out.mixedOff, [7, 'full', 1.0]),
+    JSON.stringify([out.mixedOn, out.mixedOff]));
+  check('t_grounded_evidence — ON: a verdict quoting what they DID say is untouched',
+    eq(out.groundedOn, [7, 'full', 1.0]), JSON.stringify(out.groundedOn));
+  check('t_grounded_evidence — loose on purpose: reformatting and filler do not break a quote',
+    out.looseMatch === true, JSON.stringify(out.looseMatch));
+  check('t_grounded_evidence — …and with no transcript to check against, nothing is withdrawn',
+    eq(out.noTranscript, [7, 'full', 1.0]), JSON.stringify(out.noTranscript));
+
+  check('t_error_asymmetry — a false claim whose reason is the quote back again is not applied',
+    eq(out.restatedClaim, [7, 'full', 1.0]) && eq(out.reasonedClaim, [7, 'partial', 0.8]),
+    JSON.stringify([out.restatedClaim, out.reasonedClaim]));
   check('t_points_scoring — penalties need a quote: unquoted claims and contradictions are not applied',
     // The unquoted contradiction on R1 is scored absent: 0 + 2 + 1 + 1 = 4, no cap.
     eq(out.unquotedClaim, [7, 'full', 1.0]) && eq(out.unquotedContra, [4, 'partial', 0.8]));
   check('t_points_scoring — a missing or unknown verdict is a gap, never an absent',
     out.gap === true && out.junkVerdict === true);
   check('t_points_scoring — absent/"bands" scoring is band mode', eq(out.bandsDefault, [null, null, null]));
+  check('t_optional_points_framing — crediting an optional point can only ever raise the mark',
+    out.optOnlyRaises === true, JSON.stringify(out.optOnlyRaises));
+
+  /* t_error_asymmetry (INV-GRADE-11) — where the arithmetic is UNCERTAIN it
+     resolves the student's way. Each of these was decided separately, which is
+     why they are asserted together: the invariant is the pattern, and a future
+     change that points one of them the other way is the regression this catches.
+     The rule is not "be generous" — the ladder and the curve are untouched. It
+     governs only the margin. */
+  check('t_error_asymmetry — an unevidenced penalty is dropped, not applied',
+    eq(out.unquotedClaim, [7, 'full', 1.0]) && eq(out.unquotedContra, [4, 'partial', 0.8]),
+    JSON.stringify([out.unquotedClaim, out.unquotedContra]));
+  check('t_error_asymmetry — a gap in the judgement is unparseable, never a silent zero',
+    out.gap === true && out.junkVerdict === true);
+  check('t_error_asymmetry — a confident falsehood CAPS the mark rather than zeroing it',
+    eq(out.falseFull, [7, 'partial', 0.8]), JSON.stringify(out.falseFull));
+  check('t_error_asymmetry — depth the student reached can only raise the mark',
+    out.optOnlyRaises === true);
+
+  /* t_points_reply_trailing_text (INV-GRADE-4) — a model that answers correctly
+     and then keeps talking has still answered. A real Quiz 3 submission lost all
+     five of its questions to a greedy first-brace-to-last slice: qwen2.5-3b
+     emitted a complete object, then appended a truncated pretty-printed copy,
+     and the pair would not parse. */
+  const shp = out.replyShapes;
+  check('t_points_reply_trailing_text — a complete object survives trailing chatter',
+    shp.clean && shp.trailing && shp.wrapped, JSON.stringify(shp));
+  check('t_points_reply_trailing_text — …and prose before it, and other JSON before it',
+    shp.leading && shp.notAnswer, JSON.stringify(shp));
+  check('t_points_reply_trailing_text — a reply with no usable object is still None',
+    shp.junk && shp.truncated, JSON.stringify(shp));
+  check('t_points_reply_trailing_text — the recovered object marks like any other',
+    eq(out.trailingGrades, [7, 'full', 1.0]), JSON.stringify(out.trailingGrades));
   check('t_points_scoring — malformed policies are refused whole', out.refused.every(Boolean), JSON.stringify(out.refused));
   check('t_points_scoring — a ladder without the five bands grades nobody', out.ladderRefused === true);
   check('t_points_scoring — the heuristic path computes points and lists the unmade optional point',
@@ -4791,9 +5618,16 @@ print(json.dumps(res))
     Object.values(out.prompt).every(Boolean), JSON.stringify(out.prompt));
   check('t_points_scoring — a GenAI reply missing a verdict ends in REGRADE REQUIRED', out.gapRegrade === true);
   // The student gets a NARRATIVE, never the rubric (instructor, 2026-09-12).
+  /* The fallback says what the answer DID, and nothing about what it did not say
+     (instructor, 2026-09-15). `momentum smooths oscillation` is this fixture's
+     unmade supporting point: it belongs in the instructor record and must not
+     reach the student, who was never shown the list it comes from. */
   check('t_points_scoring — the fallback feedback is a narrative with no scoring vocabulary',
-    /To take the answer further/.test(out.fallback)
+    /came across clearly/.test(out.fallback)
     && !/\bpoints?\b|\bscore|\bgrade|\bband|\brubric|\brequired\b|\boptional\b|\bverdict/i.test(out.fallback),
+    out.fallback);
+  check('t_points_scoring — …and never lists what the student did not say',
+    !/momentum/i.test(out.fallback) && !/further|stronger|deeper|could have/i.test(out.fallback),
     out.fallback);
   check('t_points_scoring — the model is told to write a narrative that never names the scoring',
     out.prompt.narrative === true);
@@ -4808,6 +5642,165 @@ print(json.dumps(res))
     && /pointscore\.compute\(/.test(local));
   check('t_points_scoring — the autograder reads `scoring` and gives the instructor the breakdown',
     /knob\(course, acfg, "scoring", None\)/.test(agS) && /pointscore\.instructor_text\(/.test(agS));
+}
+
+// ---------------------------------------------------------------------------
+// INV-GRADE-10, curve mode (instructor, 2026-09-15) — the mark is read off the
+// instructor's own curve, and a correct point nobody listed still earns credit.
+// ---------------------------------------------------------------------------
+{
+  const out = JSON.parse(py(`
+import json, grade, bands, pointscore as P
+L = bands.DEFAULT_LADDER
+CURVE = {"mode": "points", "table": [0, 0.7, 0.85, 0.9, 0.92, 0.95, 0.97, 1.0],
+         "novelCap": 3, "falseClaimCapScore": 0.85, "noCoreCapScore": 0.7}
+pol = P.resolve_policy(CURVE)
+q = {"keyPoints": ["a", "b"], "bonusPoints": ["c", "d", "e"]}
+S, H, A, C = "stated", "partly", "absent", "contradicted"
+generous = P.resolve_policy({**CURVE, "partlyFactor": 1})
+roundUp = P.resolve_policy({**CURVE, "curveRounding": "up"})
+def run(vs, novel=(), claims=(), policy=None):
+    ids = [p for p, _, _ in P.point_list(q)]
+    a = {"points": [{"id": i, "verdict": v, "evidence": "w" if v != "absent" else ""}
+                    for i, v in zip(ids, vs)],
+         "novelPoints": list(novel), "falseClaims": list(claims)}
+    r = P.compute(q, P.read_answer(a, q), policy or pol, L)
+    return [r["points"]["total"], r["score"], r["band"], r["points"]["cappedBy"]]
+def N(v="full", quote="their own words", claim="an example of their own"):
+    return {"claim": claim, "quote": quote, "verdict": v}
+res = {
+  "oneCore": run([S,A,A,A,A]), "oneCorePlusOwn": run([S,A,A,A,A], [N()]),
+  "bothCore": run([S,S,A,A,A]), "trade": run([S,A,S,S,A]),
+  "depth1": run([S,S,S,A,A]), "depth2": run([S,S,S,S,A]), "everything": run([S,S,S,S,S]),
+  "halfOne": run([H,A,A,A,A]), "nothing": run([A,A,A,A,A]),
+  "novelCapped": run([S,S,A,A,A], [N() for _ in range(5)]),
+  "novelUnquoted": run([S,S,A,A,A], [N(quote="")]),
+  "novelWrong": run([S,S,A,A,A], [N("wrong")]),
+  "novelPartial": run([S,S,A,A,A], [N("partial")]),
+  "falseClaim": run([S,S,S,S,A], claims=[{"quote": "the rank is three",
+                                          "why": "The rank is two, because only two singular values are nonzero."}]),
+  "noCore": run([A,A,S,S,S]),
+  # partlyFactor (instructor, 2026-09-16): a course may round a half-made point UP.
+  "partlyDefault": run([H,H,A,A,A]),
+  "partlyGenerous": run([H,H,A,A,A], policy=generous),
+  "partlyGenerousEqualsStated": run([S,S,A,A,A], policy=generous),
+  "novelPartialDefault": run([S,S,A,A,A], [N("partial")]),
+  "novelPartialGenerous": run([S,S,A,A,A], [N("partial")], policy=generous),
+  # curveRounding "up": a half point always buys a rung, but is still only half.
+  "upHalfDown": run([S,H,A,A,A], [N("partial")]),
+  "upHalfUp": run([S,H,A,A,A], [N("partial")], policy=roundUp),
+  "upLoneHalfDown": run([S,A,A,A,A], [N("partial")]),
+  "upLoneHalfUp": run([S,A,A,A,A], [N("partial")], policy=roundUp),
+  "upTwoPartlyCores": run([H,H,A,A,A], policy=roundUp),
+  "upWholeUnchanged": run([S,S,A,A,A], policy=roundUp),
+}
+res["capNote"] = any("capped at 3" in n for n in
+    P.compute(q, P.read_answer({"points": [{"id": i, "verdict": S, "evidence": "w"}
+                                           for i in ("R1","R2","O1","O2","O3")],
+                                "novelPoints": [N() for _ in range(5)], "falseClaims": []}, q),
+              pol, L)["points"]["notes"])
+# A curve needs no ladder: the same two-band ladder that makes band-priced points
+# mode refuse is fine here, because no band name is ever produced.
+try:
+    grade.grade("x", q, backend="heuristic", bandSpec={"top": 1.0, "bottom": 0.0}, scoring=CURVE)
+    res["noLadderNeeded"] = True
+except grade.GraderUnavailable:
+    res["noLadderNeeded"] = False
+bad = []
+for spec in ({"mode": "points", "table": [0.5]},
+             {"mode": "points", "table": [0, 0.9, 0.8]},
+             {"mode": "points", "table": [0, 1.4]},
+             {"mode": "points", "table": [0, "x"]},
+             {"mode": "points", "table": [0, 1], "novelCap": -1},
+             {"mode": "points", "table": [0, 1], "falseClaimCapScore": 2},
+             # A partly-made point may never outscore a fully made one.
+             {"mode": "points", "table": [0, 1], "partlyFactor": 1.5},
+             {"mode": "points", "table": [0, 1], "partlyFactor": -0.1},
+             {"mode": "points", "table": [0, 1], "curveRounding": "nearest"}):
+    try: P.resolve_policy(spec); bad.append(False)
+    except ValueError: bad.append(True)
+res["refused"] = bad
+h = grade.grade("gradient descent updates the weights", {"keyPoints": ["gradient descent updates weights"],
+                "bonusPoints": ["momentum smooths oscillation"]}, backend="heuristic", scoring=CURVE)
+res["heuristicCurve"] = [h["score"], h["band"], h["points"]["curve"]]
+sysmsg = P.system_prompt("ABSOLUTE RULES\\n")
+res["prompt"] = {
+  "novelRule": "CREDIT WHAT THEY ACTUALLY SAID" in sysmsg,
+  "novelStrict": "NOT for restating a listed point" in sysmsg,
+  "noUnsaidList": "DO NOT list ideas the student did not mention" in sysmsg,
+  "shape": "novelPoints" in P.shape(1),
+  "core": "CORE POINTS (validated" in P.points_block(q),
+  "sufficient": "is already a sound if simplified answer" in P.points_block(q),
+}
+print(json.dumps(res))
+`));
+  const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  check('t_points_scoring — one core point alone is a good mark, not a middling one',
+    eq(out.oneCore, [2, 0.85, null, []]), JSON.stringify(out.oneCore));
+  check('t_points_scoring — a correct point nobody listed earns credit',
+    eq(out.oneCorePlusOwn, [3, 0.9, null, []]), JSON.stringify(out.oneCorePlusOwn));
+  check('t_points_scoring — answering the question lands at 0.92, depth climbs from there',
+    eq(out.bothCore, [4, 0.92, null, []]) && eq(out.depth1, [5, 0.95, null, []])
+    && eq(out.depth2, [6, 0.97, null, []]) && eq(out.everything, [7, 1.0, null, []]));
+  check('t_points_scoring — supporting points can stand in for the second core point',
+    eq(out.trade, [4, 0.92, null, []]));
+  check('t_points_scoring — a total between two entries takes the lower one',
+    eq(out.halfOne, [1, 0.7, null, []]) && eq(out.novelPartial, [4.5, 0.92, null, []]),
+    JSON.stringify([out.halfOne, out.novelPartial]));
+  check('t_points_scoring — nothing conveyed is still zero', eq(out.nothing, [0, 0, null, []]));
+  check('t_points_scoring — novel credit is capped per answer',
+    eq(out.novelCapped, [7, 1.0, null, []]) && out.capNote === true,
+    JSON.stringify(out.novelCapped));
+  check('t_points_scoring — a novel point with no quote is not counted, for or against',
+    eq(out.novelUnquoted, [4, 0.92, null, []]));
+  check('t_points_scoring — a WRONG novel point is a false claim: it costs and it caps',
+    eq(out.novelWrong, [3, 0.85, null, ['an uncorrected false statement']]),
+    JSON.stringify(out.novelWrong));
+  check('t_points_scoring — an uncorrected false claim caps the score on the curve too',
+    eq(out.falseClaim, [6, 0.85, null, ['an uncorrected false statement']]));
+  check('t_points_scoring — depth cannot stand in for answering the question at all',
+    eq(out.noCore, [3, 0.7, null, ['no core point conveyed']]));
+  check('t_points_scoring — a curve needs no band ladder', out.noLadderNeeded === true);
+  check('t_points_scoring — an unusable curve is refused whole',
+    out.refused.every(Boolean), JSON.stringify(out.refused));
+  check('t_points_scoring — the heuristic path scores off the curve as well',
+    out.heuristicCurve[1] === null && out.heuristicCurve[2] !== null,
+    JSON.stringify(out.heuristicCurve));
+  check('t_points_scoring — the prompt asks for novel points, strictly, and forbids an unsaid-list',
+    Object.values(out.prompt).every(Boolean), JSON.stringify(out.prompt));
+  /* partlyFactor — what a half-made point is worth is the COURSE's call. The
+     model is never told the number; it reports `partly` either way. */
+  check('t_points_scoring — `partly` is worth half by default',
+    eq(out.partlyDefault, [2, 0.85, null, []]), JSON.stringify(out.partlyDefault));
+  check('t_points_scoring — …and a course may price it in full',
+    eq(out.partlyGenerous, [4, 0.92, null, []]), JSON.stringify(out.partlyGenerous));
+  check('t_points_scoring — at full price a gestured answer equals a crisp one (the cost of it)',
+    eq(out.partlyGenerous, out.partlyGenerousEqualsStated));
+  /* curveRounding — which way a half point goes. Rounding UP is what stops a
+     lone `partly` rounding away to nothing while keeping it worth only half. */
+  check('t_points_scoring — rounding up lifts a half point to the next rung',
+    eq(out.upHalfDown, [3.5, 0.9, null, []]) && eq(out.upHalfUp, [3.5, 0.92, null, []]),
+    JSON.stringify([out.upHalfDown, out.upHalfUp]));
+  check('t_points_scoring — …so a half-made point is never worth nothing',
+    eq(out.upLoneHalfDown, [2.5, 0.85, null, []]) && eq(out.upLoneHalfUp, [2.5, 0.9, null, []]),
+    JSON.stringify([out.upLoneHalfDown, out.upLoneHalfUp]));
+  check('t_points_scoring — …but two half-made points still buy only one whole one',
+    eq(out.upTwoPartlyCores, [2, 0.85, null, []]), JSON.stringify(out.upTwoPartlyCores));
+  check('t_points_scoring — …and a whole total is unmoved by the rounding rule',
+    eq(out.upWholeUnchanged, out.bothCore));
+  /* t_error_asymmetry (INV-GRADE-11), the rounding half — the probes for it live
+     in this block. Rounding UP is the cheapest instance of the rule: it costs a
+     tenth of a mark at the margin and guarantees a half-made point is never
+     worth exactly nothing, which is what rounding down made it. */
+  check('t_error_asymmetry — a half-made point rounds UP to the next rung, never away to nothing',
+    eq(out.upHalfDown, [3.5, 0.9, null, []]) && eq(out.upHalfUp, [3.5, 0.92, null, []])
+    && eq(out.upLoneHalfDown, [2.5, 0.85, null, []])
+    && eq(out.upLoneHalfUp, [2.5, 0.9, null, []]),
+    JSON.stringify([out.upHalfUp, out.upLoneHalfUp]));
+  check('t_points_scoring — the same knob prices a novel `partial`',
+    eq(out.novelPartialDefault, [4.5, 0.92, null, []])
+    && eq(out.novelPartialGenerous, [5, 0.95, null, []]),
+    JSON.stringify([out.novelPartialDefault, out.novelPartialGenerous]));
 }
 
   const passed = results.filter(Boolean).length;

@@ -77,17 +77,29 @@ function servedQuestion(q, meta) {
   return out;
 }
 
+const P = require('../server/lib/protocol');
+
 const banks = {};
 const metaOn = [];
 for (const [assignmentId, a] of Object.entries(course.assignments || {})) {
   const bankPath = resolveBank(coursePath, a.bank);
-  const bank = JSON.parse(fs.readFileSync(bankPath, 'utf8'));
+  const bankRaw = fs.readFileSync(bankPath);
+  const bank = JSON.parse(bankRaw.toString('utf8'));
   const meta = showMeta(a);
   if (meta) metaOn.push(assignmentId);
   banks[assignmentId] = {
     bankId: bank.bankId,
     title: bank.title,
     revision: bank.revision,
+    /* A digest of the WHOLE bank file — answers, rubrics, evidence and all
+     * (INV-DEPLOY-7). It never goes on the wire: /health publishes a KEYED tag
+     * derived from it, because a plain digest would let anyone holding a leaked
+     * bank confirm it is genuine. Its job is to make "which questions is the
+     * Worker actually serving?" a question with an answer, which it was not
+     * before: a bank can be revised while its bankId and its question ids stay
+     * put, and a Worker and a Gradescope zip built from different revisions
+     * mis-grade silently rather than failing. */
+    bankDigest: P.bankDigest(bankRaw),
     questions: (bank.questions || []).map((q) => servedQuestion(q, meta)),
   };
 }

@@ -156,7 +156,7 @@ check('t_no_weights_in_zip — the upload stays small enough to actually upload 
   zipBytes < 100 * 1024 * 1024, `${(zipBytes / 1024).toFixed(0)} KB`);
 
 check('t_no_weights_in_zip — setup.sh is what downloads the GGUF, at image build time',
-  /hf_hub_download/.test(fs.readFileSync(path.join(ROOT, 'autograder', 'setup.sh'), 'utf8')));
+  /install_runtime\.py/.test(fs.readFileSync(path.join(ROOT, 'autograder', 'setup.sh'), 'utf8')));
 
 const entry = path.join(srcDir, 'run_autograder');
 check('zip ships the run_autograder entry script', fs.existsSync(entry));

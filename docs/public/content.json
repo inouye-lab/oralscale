@@ -1,6 +1,6 @@
 {
-  "reviewDate": "September 12, 2026",
-  "version": "1.4",
+  "reviewDate": "October 19, 2026",
+  "version": "1.5",
   "repositoryUrl": "https://github.com/inouye-lab/oralscale",
   "sources": {
     "requirements": "models/02-requirements-and-invariants.md",
@@ -126,7 +126,7 @@
       {
         "id": "codes",
         "question": "Why do I have to say the codes?",
-        "answer": "Codes help confirm you answered live. Read every set before, between, and after your answers, one digit at a time. A missing code can cause a 0. If you said it but the feedback says otherwise, ask staff to review your recording.",
+        "answer": "Codes help confirm you answered live. Read every set before, between, and after your answers, one digit at a time. Missed codes are flagged; missing half or more scores 0. If you said them, ask staff to review your recording.",
         "sources": [
           "requirements",
           "integrity",
@@ -217,7 +217,7 @@
       {
         "id": "bank",
         "question": "How do I generate a large, course-aligned bank?",
-        "answer": "Give AI your materials and design specification. Request roughly 100 varied, source-grounded questions with reference answers and grading criteria. Have the agent validate them. Review samples across topics and difficulty, try several aloud, then approve and freeze the bank.",
+        "answer": "Give AI your materials and design specification, starting from the recommended template. Request roughly 100 varied, source-grounded questions with reference answers and grading criteria. Have the agent validate them. Review samples across topics and difficulty, try several aloud, then approve and freeze the bank.",
         "sources": [
           "questions",
           "bankSpec",

@@ -10,7 +10,88 @@ versions. The public series starts at `0.1.0-alpha.1`.
 
 ## [Unreleased]
 
+## [0.2.0-alpha.1] — 2026-10-19
+
+Second instructor release. **Local grading and the points curve are now the recommended setup**:
+new courses (from `courses/_template/` or `npm run setup`) grade inside the Gradescope container
+with Qwen3.5 4B and score on the curve, and `courses/_template/question-design.md` carries the
+question-design house style the pilot course converged on. Existing courses keep exactly what
+their `course.json` says: nothing switches a released assignment's grader or scale (INV-DEPLOY-6).
+Rebuild autograder zips for new assignments only.
+
+### Highlights
+- **Recommended course defaults.** `courses/_template/course.json`, `tools/setup.js` and the demo
+  course now ship `gradingBackend: "local"` with `localModel: "qwen3.5-4b"`, the points curve
+  (`0 / 0.70 / 0.85 / 0.90 / 0.92 / 0.95 / 0.97 / 1.00`, `curveRounding: "up"`, novel points up to
+  3, false-claim cap 0.85, no-core cap 0.70), `dropLowest`, a five-question
+  `intro / core / core / core / stretch` mix, and a `feedbackFooter` telling students a good,
+  correct answer earns about 90%. The engine's own default when `scoring` is unset is still the
+  band ladder.
+- **Question-design template.** `courses/_template/question-design.md` now has three parts: the
+  course-specific page to fill in; the recommended house style (one core criterion per explicit
+  ask, never a remembered list, at most two asks, self-contained prompts, a later ask must not
+  answer an earlier one, notation for reading not speaking, first-read clarity, a fully worked
+  question with `evidence` and `gradingContext`); and a running log of lessons from each review.
+- **The demo bank is a worked example of the recommended schema.** `general-stem.json` revision
+  2.0: one or two core points per question, `bonusPoints` for depth, and `gradingContext` for the
+  local grader. Prompts and question ids are unchanged.
+- **Standard local grading profile `qwen35-context-off-v1`** (INV-LOCAL-1/2): Qwen3.5 4B Q4_K_M on
+  a pinned llama.cpp runtime with SHA256-verified artifacts, thinking disabled, one question at a
+  time, constrained JSON. Evidence and limits in `docs/reference/LOCAL-GRADING.md`. Explicit
+  `qwen2.5-3b` keeps the historical grader.
+- **Points curve scoring** (INV-GRADE-10): `scoring.table` turns the point total into the mark;
+  substantive correct points nobody listed earn credit; student feedback never lists what they
+  did not say.
+- **Positive mistakes beat negative mistakes** (INV-GRADE-11), stated as a project-wide rule:
+  uncertain choices resolve in the student's favour, and grader evaluations report over- and
+  under-crediting separately.
+
 ### Added
+- **Timing and memory diagnostics in every autograder** (INV-USE-6). Students see local start,
+  finish and elapsed time; instructors get stage timings and container memory use, peak, cap and
+  headroom.
+- **`feedbackFooter`** (INV-USE-7): an optional fixed note under every question's feedback.
+- **The Worker publishes which bank revision it serves**, with a keyed tag, and `gen-url.js`
+  refuses to mint a link against a Worker serving a different bank (INV-DEPLOY-7).
+- **A GenAI autograder is never built against a model the service no longer offers**
+  (INV-DEPLOY-8, `tools/genai-models.js`).
+- **Instructor identity-debug builds** (INV-DEBUG-1) with their own filename and flag-only identity.
+- **`tools/bank-worksheet.js`** offline Keep / Revise / Remove review worksheet, and a
+  quiz-bank authoring skill for coding agents (`.claude/skills/quiz-bank-authoring/`).
+- **QUESTION-DESIGN-GUIDE Step 7**: nine rules a prompt and its key owe each other.
+- **Shared model cache for developer workstations**: local tooling resolves model weights offline
+  from the standard Hugging Face cache instead of per-repository copies.
+
+### Changed
+- **Every verified attempt is graded** (INV-CODE-4). An attempt with at least half its boundary
+  codes heard and no other integrity failure keeps its score, with a review flag; otherwise it
+  scores 0 but is still graded, with a hidden would-have-been score for the instructor to
+  override with. Previously one missed code zeroed the attempt.
+- **The GenAI key ships only in zips that grade with GenAI**; a local-only zip no longer carries
+  it, and a GenAI-only zip no longer carries the local model.
+
+### Fixed
+- **Gradescope image builds failed in pip's resolver** on Ubuntu 22.04's pip 22.0.2 when a
+  dependency release forced backtracking. Setup now installs pip 24.3.1 first.
+- **A braceless `\tfrac12` swallowed the character after it** in the student app's math renderer.
+  The renderer also gains `\dagger`, norm bars and `\operatorname`.
+
+
+### Added
+- **`tools/bank-worksheet.js`: an offline instructor feedback worksheet for a draft bank.**
+  - Questions appear in a shuffled order, seeded by the bank's SHA-256, so the order stays the
+    same across reloads of one revision. Question IDs are always visible. Prompts go through
+    the student app's parser.
+  - Each question shows its core and supporting criteria with their sufficient examples,
+    together with the misconceptions and the verbatim evidence.
+  - The reviewer marks each question Keep, Revise or Remove and can add a note. **Copy
+    feedback** exports every note as plain text; notes can also be exported and imported as
+    JSON tied to the bank hash.
+  - `bank-review-sheet.js` remains the read-only view.
+- **Quiz-bank authoring skill (`.claude/skills/quiz-bank-authoring/`).** The skill orients a
+  coding agent before it writes a bank. It points to the guideline documents, which remain the
+  place for question-writing guidance, and to the course's `question-design.md`. It then walks
+  through the private-course workflow: sources, draft, red-team audit, worksheet and handoff.
 - **Points scoring (`scoring: "points"`, INV-GRADE-10), opt-in per course or assignment.** The
   grader judges every point on its own — `stated`, `partly`, `absent` or `contradicted`, quoting
   the student — and lists any false claims the student left uncorrected. Code then computes the

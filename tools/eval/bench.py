@@ -188,6 +188,7 @@ def grade_local(cases, bands=None, checkpoint=None):
     a student would actually meet.
     """
     import localmodel as LM
+    import grade as G
     if not LM.available():
         raise SystemExit("local model unavailable: " + (LM.unavailable_reason() or "?"))
     out = {}
@@ -197,7 +198,7 @@ def grade_local(cases, bands=None, checkpoint=None):
     for n, (cid, _bank, q, ans, _b) in enumerate(cases, 1):
         if cid in out:
             continue
-        r = LM.grade_one(q, ans, "BENCHFENCE", bands=bands)
+        r = LM.grade_one(q, ans, "BENCHFENCE", ladder=G.resolve_bands(bands))
         out[cid] = None if 'error' in r else r.get('score')
         if n % 10 == 0:
             if checkpoint:

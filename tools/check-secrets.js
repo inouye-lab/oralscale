@@ -120,6 +120,15 @@ function main() {
   const findings = [];
 
   for (const f of files) {
+    // AGENTS.md: this audit source is instructor-only, including indirect reads.
+    if (f === 'tools/audit-accommodations.js') {
+      console.log('Audit source content check reserved for instructor (AGENTS.md).');
+      continue;
+    }
+    if (/accommodation|roster|\.keys\.csv$/i.test(path.basename(f))) {
+      findings.push({f, what:'restricted personal-data filename', how:'path'});
+      continue; // Name alone is sufficient to refuse; never read personal contents.
+    }
     for (const [re, what] of FORBIDDEN_PATHS) {
       if (re.test(f)) findings.push({ f, what, how: 'path' });
     }
@@ -141,7 +150,7 @@ function main() {
   }
 
   if (!findings.length) {
-    if (all) console.log(`✅ ${files.length} tracked file(s) checked — no credentials or student records.`);
+    if (all) console.log(`✅ ${files.length} tracked paths checked (audit source excluded) — no detected credentials or student records.`);
     return;
   }
 

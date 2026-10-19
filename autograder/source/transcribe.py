@@ -150,7 +150,7 @@ def _faster_whisper_model():
     if name in _MODEL_CACHE:
         return _MODEL_CACHE[name]
     from faster_whisper import WhisperModel  # type: ignore
-    threads = int(os.environ.get("ORALSCALE_WHISPER_THREADS", "0") or 0)
+    threads = int(os.environ.get("ORALSCALE_WHISPER_THREADS", "4") or 4)
     kw = {"device": "cpu", "compute_type": "int8"}
     if threads > 0:
         kw["cpu_threads"] = threads

@@ -74,14 +74,14 @@ const backendOf = (aid) => String(
 function show() {
   console.log(`\n${B(course.courseId)} — grading configuration\n`);
   console.log(`  ${DIM('defaults')}  backend=${course.defaults.gradingBackend || 'local'}`
-    + `  localModel=qwen2.5-3b ${DIM('(the only one)')}`
+    + `  localModel=${course.defaults.localModel || 'qwen3.5-4b'} ${DIM('(versioned local profile)')}`
     + `  scoreBonus=${course.defaults.scoreBonus || 0}`);
   const rows = Object.keys(course.assignments).map((aid) => {
     const a = course.assignments[aid];
     const over = [];
     if (a.gradingBackend) over.push(`backend=${a.gradingBackend}`);
-    if (a.localModel && a.localModel !== 'qwen2.5-3b') {
-      over.push(`localModel=${a.localModel} ${WARN('(stale — ignored)')}`);
+    if (a.localModel) {
+      over.push(`localModel=${a.localModel} `);
     }
     if (a.scoreBonus) over.push(`scoreBonus=${a.scoreBonus > 0 ? '+' : ''}${a.scoreBonus}`);
     return { aid, backend: backendOf(aid), over };
@@ -127,16 +127,13 @@ if (backend) {
 
 const model = val('model');
 if (model) {
-  console.error('--model is gone: there is one bundled local model, qwen2.5-3b.');
-  console.error('');
-  console.error('  Eleven alternatives from 1.5B to 9B were measured against it and none won;');
-  console.error('  bigger models grade WORSE here, because they are generous and that shows up');
-  console.error('  as ties. See docs/reference/GRADER-BACKENDS.md.');
-  console.error('');
-  console.error('  If you want better grading than the local model gives, the real choice is');
-  console.error('  the BACKEND, not the model:  --backend genai  (Purdue GenAI qwen3.6:27b,');
-  console.error('  noticeably better at marking — but the transcript leaves the container).');
-  process.exit(1);
+  const { MODELS } = require('./lib/local-profile.js');
+  if (!MODELS.includes(model)) {
+    console.error('--model must be one of: '+MODELS.join(', '));
+    process.exit(1);
+  }
+  changes.push(`localModel: ${target.localModel || '(inherited)'} -> ${model}`);
+  target.localModel = model;
 }
 
 const bonusRaw = val('bonus');

@@ -27,8 +27,8 @@ checks the faculty starter-prompt copy action and question-design link, and capt
 | INV-INTEGRITY-1 | `t_hash_binding` | unit+e2e | tampered audio → reject |
 | INV-INTEGRITY-2 | `t_window_deadline` | integration | finish after deadline → no cert |
 | INV-INTEGRITY-3 | `t_duration_window` | unit+e2e | audio longer than window → reject |
-| INV-INTEGRITY-4 | `t_opening_code`, `t_boundary_codes`, e2e E | unit+e2e | first boundary code absent from the start of the transcript → reject; N=1 codes are byte-identical to the v4 bookend |
-| INV-INTEGRITY-5 | `t_closing_code`, `t_boundary_codes`, e2e E2/E3/S5/S6 | unit+e2e | any boundary code absent → reject (including an INTERIOR one on a multi-question attempt); `/finish` refuses a RevealToken *and* a mid-attempt ClosingToken, so neither the closing step nor a remaining question can be skipped |
+| INV-INTEGRITY-4 | `t_opening_code`, `t_boundary_codes`, e2e E | unit+e2e | first boundary code absent from the start of the transcript → not heard (graded and flagged unless fewer than half the codes are heard, INV-CODE-4); N=1 codes are byte-identical to the v4 bookend |
+| INV-INTEGRITY-5 | `t_closing_code`, `t_boundary_codes`, e2e E2/E3/S5/S6 | unit+e2e | any boundary code absent → reported NOT HEARD, including an INTERIOR one on a multi-question attempt (consequence per INV-CODE-4); `/finish` refuses a RevealToken *and* a mid-attempt ClosingToken, so neither the closing step nor a remaining question can be skipped |
 | INV-INTEGRITY-4/5 tolerance | `t_code_fuzzy`, e2e L/M | unit+e2e | one mis-transcribed digit still accepted; three wrong digits rejected |
 | INV-INTEGRITY-6 | `t_capture_order` | integration | reveal only issued after recording asserted |
 | INV-INTEGRITY-7 | `t_no_cert_zero`, `t_uncertified_backup_zero` | e2e+package+unit | submission w/o cert → score 0 + instructor-review flag; captured audio remains downloadable in a visibly labelled UNCERTIFIED BACKUP; student is told to prefer a fresh certified attempt and that staff may manually override only after review; the backup is never content-graded |
@@ -68,6 +68,8 @@ checks the faculty starter-prompt copy action and question-design link, and capt
 | INV-INTEGRITY-5 | `t_boundary_code_readable` | unit | the "expected but not heard" line separates the boundary INDEX from the spoken CODE with more than a space, so a 4-digit code beside its index cannot be read as one 5-digit code |
 | INV-GRADE-6 | `t_rate_limit_visible` | unit | against a urlopen throttled forever, the SHARED budget (not the 25-min per-request deadline) ends the retries; giving up names both the budget and the throttling with counts; an HTTP 400 whose BODY says "rate limit" is counted as throttling; retry lines are streamed to stderr as they happen, so a killed container still leaves a trail |
 | INV-GRADE-7 | `t_dropped_question_mark`, `S4c`/`S4c2` | unit + e2e | the dropped question shows the mark it would have earned on the counted questions' scale, says it is NOT part of the total, and carries no `score`/`max_score` so Gradescope cannot sum it back in |
+| INV-DEPLOY-8 | `t_genai_model_offered` | unit | against a stub `/api/models`: `genai-models.js` exits 0 for a listed model, 3 for an absent one with the same-family same-size successor ranked first, 2 when unreachable; the build REFUSES an absent model and writes no zip, but only warns when the service cannot be asked; the grader turns `{"detail":"Model not found"}` into a message naming the model, `genai-models.js` and the regrade, in ONE request rather than a retry loop |
+| INV-DEPLOY-7 | `t_link_needs_live_worker` | unit | `/health` publishes each bank's `revision` and a KEYED tag of its file digest; `gen-url.js` mints when the tag matches the bank on disk and REFUSES when it does not, naming both revisions — the case every other preflight check passes, because a bank revised in place keeps its bankId, assignment id and question ids; the tag is shown to be keyed, not a bare digest, so a public /health cannot confirm a leaked bank |
 | INV-DEPLOY-5 | `t_link_needs_live_worker` | unit | with a `signerUrl` present, `gen-url.js` calls `/health` BEFORE signing and prints no link when the deployed Worker names a different course, does not list the assignment, disagrees on `questionsPerAttempt` or `requireAccessKey`, is unreachable, or still carries the `_template` placeholder URL; it mints normally when `/health` matches; no flag re-enables minting past a refusal |
 | FR-6 | `t_retake_fresh_q` | e2e | consecutive attempts get different questions |
 | FR-8 | `t_portability` | unit | swap courseId → no code change needed |
@@ -75,9 +77,21 @@ checks the faculty starter-prompt copy action and question-design link, and capt
 | INV-COURSE-5 | `t_bundle_has_no_answer_key` | unit | `topic`/`principle` are absent from a freshly built bundle by default and present only where `showQuestionMeta: true`; both Signers rebuild the served payload by allow-list, so an older bundle cannot put them on the wire either |
 | INV-PRIV-7 | `t_bundle_has_no_answer_key` | unit | a real `build-worker.js` run over a fixture bank yields questions whose keys are exactly `id`/`difficulty`/`prompt`; the reference answer, the scoring bands, the common errors and the evidence quotes appear NOWHERE in the file, not merely under no key |
 | INV-GRADE-8 | `t_client_split_marks` | unit | a well-formed set normalises intact and yields per-question audio-clock windows; nine malformed shapes — unknown event, an extra field, NaN, Infinity, negative, absurd, fractional index, non-array, empty — are each refused WHOLE; JS and Python derive identical windows; the marks are read by `instructor_answer_dump` and by nothing else, so `check_boundary_codes` and the graded `segment_transcript` never consult them; both Signers sign them and both fail soft; the app measures every mark from `recorder.startedAt` |
+| INV-DEPLOY-3, INV-PRIV-6 | `t_zip_env_matches_backend`, `t_genai_key_scope`, `t_setup_llm` | unit | on a MIXED-backend course, the locally-graded assignment's zip carries no `GENAI_STUDIO_*` at all and declares `ORALSCALE_LOCAL_REQUIRED=1`; the genai assignment's zip carries all three credentials and `ORALSCALE_SKIP_LOCAL_LLM=1` with `ORALSCALE_LOCAL_REQUIRED=0`; each zip embeds only its own assignment; the build log names which zip got the key and sizes the container per assignment — decided inside the build loop from the config actually written into that zip, and cleared from the base environment so an exported key cannot ride in |
+| INV-DEPLOY-6 | `t_regrade_variant` | unit | a declared `regrade` variant builds a SECOND zip for a frozen assignment without `--repackage-frozen`, named `…-regrade-<id>.zip`, leaving the released artifact byte-identical; it is pinned to the same assignment id, ships the same bank, and differs only in `scoring`; `--regrade` without `--assignment`, an undeclared variant id, and a variant with no `scoring` are each refused; a variant marked `frozen` is refused without `--repackage-frozen`, the refusal names its recorded sha256, and the override re-cuts it |
+| INV-DEPLOY-6 | `t_regrade_backend_variant` | unit | a `regrade` variant declaring `gradingBackend` and no `scoring` builds; it is pinned to the same assignment id, ships the same bank and the same `scoring`, and carries the new backend; a genai-only course does NOT bundle the local model while the variant that flips one assignment to `local` DOES — proving the override lands before the build environment is derived; the released zip still grades with genai; a variant declaring neither `scoring` nor `gradingBackend` is refused |
 | INV-GRADE-9 | `t_required_vs_bonus` | unit | an omitted optional point can never push a band DOWN and never appears in "missed", in both graders; how many RAISE it is deferred to the ladder, and a course ladder's own top-band meaning is not overridden by a generic one; the unmade optional points are carried end to end as `strongerIf` and shown to the student in their own section, never merged into "missed"; both graders' prompts separate REQUIRED from OPTIONAL and say an absent optional point may not lower the band or appear under "missed"; the `full` band is defined as answering the question as asked, and `strong`/`partial` name REQUIRED pieces; a bonus point cannot dilute the heuristic score; `validate-bank.js` warns above four required points and names the fix, does not warn at four, refuses a point listed as both, refuses non-string bonus points, and still validates a bank written before the split existed |
-| INV-GRADE-10 | `t_points_scoring` | unit | the arithmetic lands each canonical verdict set on the intended band (required-only → partial, +1 → strong, +2 → full, 1 required + 2 optional → partial, no required point → weak at most, nothing → none, a contradicted point subtracts its weight); thresholds are relative on a 3-required question; an uncorrected false claim caps at partial; an unquoted penalty is not applied; a missing verdict is unparseable; malformed policies and a ladder lacking a band are refused; absent `scoring` is band mode; both graders' prompts carry the self-correction rule and never a threshold; the heuristic and GenAI paths return the breakdown; the student sees only narrative feedback (the prompt forbids scoring vocabulary, the fallback narrative contains none, no breakdown or stronger-if list is printed) while the instructor detail carries the evidence |
+| INV-GRADE-10 | `t_points_scoring` | unit | the arithmetic lands each canonical verdict set on the intended band (required-only → partial, +1 → strong, +2 → full, 1 required + 2 optional → partial, no required point → weak at most, nothing → none, a contradicted point subtracts its weight); thresholds are relative on a 3-required question; an uncorrected false claim caps at partial; an unquoted penalty is not applied; a missing verdict is unparseable; malformed policies and a ladder lacking a band are refused; absent `scoring` is band mode; both graders' prompts carry the self-correction rule and never a threshold; the heuristic and GenAI paths return the breakdown; the student sees only narrative feedback (the prompt forbids scoring vocabulary, the fallback narrative contains none, no breakdown or stronger-if list is printed) while the instructor detail carries the evidence; CURVE MODE (`scoring.table`): one core point alone scores 0.85 and both 0.92, depth climbs 0.95/0.97/1.00, a total between two entries takes the lower one, nothing conveyed is still 0, supporting points may stand in for a second core point, a curve needs no band ladder, and an unusable curve (too short, non-monotone, out of range, non-numeric, negative `novelCap`, out-of-range cap score) is refused whole; NOVEL POINTS: a correct unlisted point earns credit and lifts a simplified answer, credit is capped per answer with a note, an unquoted novel point counts neither way, a `wrong` one is a false claim that both costs and caps, the two ceilings (`falseClaimCapScore`, `noCoreCapScore`) apply on the curve, the prompt asks for novel points strictly and forbids listing what the student did not say, and the fallback narrative names neither; `partlyFactor` prices a `partly` (half by default, in full when the course says so, pricing a novel `partial` by the same knob), and a factor above 1 or below 0 is refused; `curveRounding: "up"` lifts a between-rungs total to the higher rung (3.5 → 0.92, a lone half point → a rung rather than nothing) while two half-made points still buy only one whole one and whole totals are unmoved, and any value but "up"/"down" is refused |
+| INV-GRADE-10 | `t_local_points_prompt_shape` | unit | the LOCAL grader's points prompt shows a filled example rather than a schema: the verdict slot is a single word and never the `stated|partly|absent|contradicted` alternation, `points` is a LIST of objects carrying the real point ids, and the example carries every key the shared rules ask for (`novelPoints`, `falseClaims`, `feedback`); the four verdicts are named once as a choice to make, and the point ids are enumerated. Each assertion pins one shape qwen2.5-3b returned INSTEAD of a gradeable answer on a real Quiz 3 submission (2026-09-17), every one of which cost the whole submission |
+| INV-GRADE-11 | `t_error_asymmetry` | unit | where the arithmetic is UNCERTAIN it resolves the student's way, asserted as one property because the invariant IS the pattern: a half-made point rounds UP to the next rung (3.5 -> 0.92, a lone `partly` -> a rung rather than nothing); an unevidenced penalty is dropped rather than applied (an unquoted false claim leaves a full answer at 1.0, an unquoted `contradicted` scores `absent`), and so is a false claim whose `why` merely restates the quote — it carries no reason, so it cannot support a cap; a gap in the judgement is unparseable rather than a silent zero; an uncorrected false claim CAPS rather than zeroes; and crediting any optional point can only ever raise the mark. A change that points any one of them the other way fails here |
+| INV-GRADE-10 | `t_grounded_evidence` | unit | `requireGroundedEvidence` is OFF by default and a verdict quoting words the student never said still earns its credit; ON, such a verdict is scored `absent` while a grounded one is untouched, and only the ungrounded credit is withdrawn rather than the whole answer; the match is loose enough that a quote the model reformatted still counts; with no transcript to check against nothing is withdrawn. Measured before it was built: an ungrounded quote accompanied a FALSE credit 97% of the time against 35% for a grounded one, so the knob removes 42% of the false credit for 3 correct credits in 449 — and it stays off by default because those 3 are the error direction INV-GRADE-11 designs against |
+| INV-GRADE-4 | `t_local_retry` | unit | the LOCAL grading path retries an unusable reply rather than abandoning the question: a stub model that fails once and then succeeds is graded, the log names the attempt count, and a model that never returns a readable reply still FAILS after the cap (a ladder that always finds a way to produce a score is the fallback chain INV-GRADE-1 forbids); the rung-2 prompt differs from rung 1 — it has to, at temperature 0 — and the text it adds mentions only the output format, never the rubric, the points or the score |
+| INV-GRADE-4 | `t_local_fills_missing_lines` | unit | a reply missing SOME verdicts is topped up by re-asking for those ids alone, with the question and transcript still in view, and the lines already given are kept byte-for-byte; a complete reply costs no extra call; a reply with NO readable line is left to the retry ladder rather than half-invented. The narrow rung exists because re-asking for the whole answer at temperature 0 mostly reproduces the same omission — nothing about the request changed |
+| INV-GRADE-9 | `t_optional_points_framing` | unit | the optional points are described to the model with NO scoring language (no "never a fault", no "beyond what was asked", no raise/lower/worth) and are still asked for by the same test as the core ones; the guarantee itself is asserted on the ARITHMETIC instead — upgrading any optional verdict is monotone non-decreasing in the score — which is what makes dropping the wording safe. NOT asserted as "equal to a question with no optional points": thresholds are relative and clamp to the optional weight on offer, so a question offering depth puts its top band higher, which is the instructor's policy and not a penalty |
+| INV-GRADE-10 | `t_points_prompt_context` | unit | the points prompt spends the bank fields that previously reached the model on the BAND path only: `referenceAnswer` and the verbatim `evidence` quotes both appear, via `localmodel.bank_context`, and a bank carrying neither adds nothing. The two graders' prompts MAY diverge here (instructor decision 2026-09-17): the fairness INV-GRADE-1 protects is that one assignment is graded by one backend, not that two backends are worded alike |
+| INV-GRADE-3 | `t_points_fixtures` | unit | the points-mode eval's ground truth, asserted because a fixture bug would otherwise be chased as a grader defect: a synthesised answer conveys exactly the points its vector claims and nothing about the absent ones; it is in student voice and never the bank text pasted (an early version only lowercased the first letter, so points written without contractions came through verbatim and would have measured string matching); the messy twin carries identical content with different delivery and is recognisably speech; a false-claim case ASSERTS the misconception rather than naming it; and generation is seeded so two graders see byte-identical inputs |
 | INV-CODE-3 | `t_codes_ledger` | unit | the student-visible message lists EVERY boundary, not only the missed ones, each with where it was shown, the digits as spoken, and heard / NOT HEARD; it points at the transcript on the same page and tells the student what to do when the grader is the one that is wrong; boundary labels read in the student's terms ("before question 1", "at the very end") |
+| INV-CODE-4 | e2e E/E2/S5/S5b, E2b/S5c, A2/C2/F2 | e2e | one code missing (opening, closing or interior) or exactly half heard → score > 0, a visible failed "Validation checks" warning that review may affect the final grade, and an instructor REVIEW block saying it was graded despite missing codes; fewer than half heard, or a tampered-audio / over-long / wrong-identity attempt → score 0, graded items hidden as NOT COUNTED with no score, a hidden "Would-have-been score" test, and no visible test carrying a score |
 | INV-DEPLOY-6 | `t_frozen_not_repackaged` | unit | a whole-course `--zip` build skips a `frozen` assignment and builds the others; naming it explicitly EXITS NON-ZERO rather than obeying; the refusal explains the late-vs-punctual grading divergence and names `--repackage-frozen`; the override rebuilds and warns what it costs; an unfrozen assignment is unaffected |
 | FR-10 | `t_roster_import` | unit | noisy CSV and namespace-prefixed inline-string XLSX rosters both mint the same deterministic per-student keys; a file without an Email column is refused |
 
@@ -274,6 +288,31 @@ assertion carries its own justification in the source, because it looks redundan
 and is not: two Courses on the legacy shared Secret verify each other's Certificates, and Assignment
 ids collide readily across Courses.
 
+## The zip's environment matches the assignment inside it (INV-DEPLOY-3, INV-PRIV-6)
+
+`t_zip_env_matches_backend` (unit, 8 assertions) over a real `--zip` build of a two-assignment
+fixture: one `genai`, one `local`.
+
+The property is not "the course ships the key it needs" but "each zip ships what **its** assignment
+needs". Those read the same on a single-backend course and come apart on a mixed one, which is why
+the fixture is mixed and why the assertion that matters is a **negative** one: no `GENAI_STUDIO_*`
+anywhere in the locally-graded zip's `secret.env`. Decided course-wide, that key was written into
+every zip as soon as any one week used GenAI — in plaintext, in an artifact readable by anyone with
+staff access to the Gradescope course, to be used by nothing in it.
+
+Both directions are pinned, because the mirror case is a build-time cost rather than a secrecy one
+and so has no symptom at all: a `genai` zip must carry `ORALSCALE_SKIP_LOCAL_LLM=1`, not bake in a
+~2 GB GGUF that INV-GRADE-1 forbids it ever falling back to.
+
+The decision is read from the `course.json` written into **that** zip, not from the course on disk,
+so a per-build override (a regrade variant's, say) cannot leave the config and the environment
+disagreeing. Two further assertions are on the build log — which zip got the key, and the container
+size per assignment — because the alternative to being told is unzipping the artifact to find out.
+
+`t_genai_key_scope` and `t_setup_llm` hold the same property against the source: that the choice is
+made inside the per-assignment loop, and that the credentials are cleared from the base environment
+so an exported `GENAI_STUDIO_*` cannot ride into a local zip through `{ ...process.env }`.
+
 ## Built-in courses are not re-keyable (INV-SEC-4)
 
 `t_builtin_courses_immutable` (unit, 6 assertions).
@@ -361,6 +400,39 @@ pretending to do.
 
 Also asserted: the output names which Secret signed it.
 
+## Evaluating a points-mode grader (INV-GRADE-3/10/11)
+
+`tools/eval/points-bench.py`, on fixtures from `tools/eval/points_fixtures.py`. Not part of the
+commit gate — it needs a model — but it is the measurement any change to a grading prompt has to
+justify itself against, and the numbers belong in STATUS with the change.
+
+**Why a new harness rather than an argument to `bench.py`.** Every other harness here measures BAND
+mode and measures ORDERING: degrade a `referenceAnswer` into full/partial/weak/none and ask whether
+the grader ranks them. That is the right ground truth for a grader that returns one label, and it
+does not transfer — there is no way to degrade an answer into a known *vector* of per-point
+verdicts. Points mode needs the opposite construction: build the answer UP from a chosen subset of
+the question's own points, so every id's correct verdict is known by construction.
+
+**What it reports, and why these and not an accuracy score.**
+
+| | |
+|---|---|
+| `readable` | the fraction of answers that came back with a verdict for every point. First, because INV-GRADE-1 has no fallback: one unreadable question costs the whole submission. This is the number that decided Quiz 3. |
+| `under` / `over` | **reported separately, never summed** (INV-GRADE-11). `under` is credit withheld from a point the student made; `over` is credit not quite earned. A single accuracy figure would let a change buy `over` accuracy with `under` errors, which is exactly the trade the invariant forbids. |
+| `optCredit` | of the optional points an answer genuinely conveyed, how many were credited. Broken out because a grader can look fine overall while being structurally blind to the O points — which caps every student below the top of the curve, and is what was happening on 2026-09-17 (72 of 72 `absent`). |
+| `messyCost` | mean score of a clean answer minus its messy twin. The two carry identical content, so anything above zero is the grader marking down *speech* — which INV-GRADE-3 forbids and nothing previously measured. |
+| `falseClaim` | catch rate on answers asserting one of the bank's own certified misconceptions. |
+| `scoreErr` | mean SIGNED difference from the mark the constructed vector earns under the course's own curve, plus the fraction marked BELOW it. Signed, for the same reason `under` and `over` are separate. |
+
+**Two axes, both switchable, so a claim can be re-run.** `--variant` selects what the local grader
+is told about each question (`bare` / `ref` / `evidence` / `ref+evidence`), substituted into
+`localmodel.bank_context`. `--opt-framing old` restores the pre-2026-09-17 optional-point wording,
+kept in the harness rather than in `pointscore.py` for the reason `variants.py` keeps its own
+copies: a measurement you cannot re-run is one the reader has to take on trust.
+
+**The fixtures are themselves tested** (`t_points_fixtures`), because a fixture bug shows up as a
+grader defect and gets chased in the wrong file.
+
 ## Retrying an unusable grader reply (INV-GRADE-4)
 
 `t_genai_parse_retry` (unit, 7 assertions), driven against `tools/fixtures/fake-genai.py` — a stub
@@ -384,6 +456,21 @@ student text leaks in by accident and the rule is worth pinning rather than trus
 survive and string **values** do not, a truncated tail is reported as `UNTERMINATED` rather than left
 dangling, and a non-JSON reply is withheld entirely rather than merely trimmed. Each is checked
 against a fixture containing a distinctive phrase that must not appear in the output.
+
+`t_points_reply_trailing_text` (unit, 4 assertions) covers the rung *below* that ladder: a reply
+that is not unusable at all, only surrounded by other text. `pointscore.parse_reply` used to fall
+back to a greedy `{.*}` slice from the first brace to the last, which is correct for a model that
+answers once and stops and wrong for one that answers and then keeps talking. A real Quiz 3
+submission (2026-09-17) lost **all five questions** to it: qwen2.5-3b emitted a complete, valid,
+gradeable object on every question and then appended a truncated pretty-printed copy, the greedy
+slice glued the two together, and the autograder reported `REGRADE REQUIRED` over a judgement it
+had already been given. The parser now decodes the first *balanced* object that is actually an
+answer, using the JSON decoder's own bracket matching. Asserted: a complete object survives
+trailing chatter, leading prose and a wrapping `answers` array; a non-answer JSON object before it
+is skipped rather than accepted; a reply with no usable object is still `None` (the ladder must
+still be able to fail, per INV-GRADE-1); and the recovered object reaches the same mark as one
+handed over clean. Shared by both backends deliberately — a parser lenient for one grader and
+strict for the other would make the two produce different marks from the same judgement.
 
 One fixture detail worth keeping: **each mode gets its own port**. Sharing one meant a stub that
 outlived its run answered the next one, and every mode silently tested whichever stub was still
@@ -479,3 +566,42 @@ only.
 - `npm run test:course` — the demo course's `starter` assignment passes end to end. It is keyed, multi-question and heuristic-graded, so it exercises the full path with no private content and no model download.
 - Browser-verified (manual): capture-before-question, question+rolling-nonce, countdown, Certified→download, 375px.
 - Remaining: real-device mic matrix (iOS/Android/desktop) — instructor checklist in the teacher guide.
+
+## Versioned local grader
+- `tools/test-local-profile.py`: INV-LOCAL-1/2, INV-GRADE-1/4/10/11. Generic enhanced and legacy-key prompts, exact criterion set, uncertainty still numeric, context reservation, thinking/truncation rejection, shared false-claim guards, pinned hashes, explicit profile selection, runtime release.
+- `tools/test-local-package.js`: INV-LOCAL-2 / INV-DEPLOY-3/6. Synthetic alternate bank preserves student questions, rejects edits/reordering/selection changes, pins selected assignment only and records build provenance.
+- Private course regression audit compares the integrated requests and scorer with frozen synthetic evaluation results; aggregate findings in docs/reference/LOCAL-GRADING.md.
+- The automated accommodation audit test invokes only its authorized synthetic `--self-test`; source inspection and attempts with input paths are instructor-only under AGENTS.md.
+
+- `tools/test-debug-identity.py` and `tools/test-local-package.js`: INV-DEBUG-1 /
+  INV-SEC-1/2/8. Signed synthetic identity match/mismatch, absent submitter, DEBUG
+  labels and numeric grading, signature/audio/assignment/access-code failures still
+  block, and normal/debug archives stay distinct with identical bank/model configuration.
+
+- INV-USE-6: `tools/test-runtime-timing.py` tests Indianapolis winter/summer offsets,
+  monotonic durations, stage accounting and failure spans; `tools/test-debug-identity.py`
+  checks feedback-first ordering, visible summary and final hidden breakdown on both
+  successful and refused runs. `tools/test-local-profile.py` checks nested Qwen timings
+  and CPU thread defaults. Extracted standard/DEBUG package checks preserve scores.
+  Resource diagnostics test synthetic cgroup v1/v2 samples, peak/limit labels, minute
+  sampling, unavailable-cgroup fallback and continued grading if a read fails.
+  Cap diagnostics also cover cgroup mount-root/namespace resolution, finite ancestor
+  limits, v1 hierarchy off, group membership, live process RSS/PSS, counter/percentage
+  arithmetic, cap-scaled chart and missing/inaccessible scope. A Linux parent plus live
+  child allocation smoke verifies the whole-group measurement includes the child.
+
+Course-local oversized-model experiments under INV-DEBUG-1 / INV-LOCAL-2 additionally
+verify the frozen base checksum, changed-file allowlist, pinned model metadata,
+unchanged bank/prompt/scoring, and refusal to start without DEBUG metadata. Their
+build/test scripts and results live with the private course experiment.
+
+INV-USE-6 lifecycle tests in tools/test-runtime-timing.py verify flushed run IDs,
+stage/failure/heartbeat events without exception contents, and launcher exit
+markers preserving both successful and failing child status.
+
+- INV-USE-7: `tools/test-feedback-footer.py` runs the autograder end to end on the
+  synthetic submission and checks that `feedbackFooter` (assignment or course default)
+  is the last text of every visible question's feedback, after FEEDBACK; that absent,
+  blank or non-string values add nothing; and that the score is unchanged.
+
+Workstation-cache coverage for INV-LOCAL-1: `test_shared_cache_exact_revision_and_overrides` in `tools/test-local-profile.py` checks exact revision, image precedence, missing explicit paths, and standard shared-cache environment overrides without network access.

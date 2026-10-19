@@ -34,6 +34,8 @@ if [ ! -f source/secret.env ] && [ -n "${ORALSCALE_SECRET:-}" ]; then
     [ -n "${ORALSCALE_ASSIGNMENT:-}" ] && echo "ORALSCALE_ASSIGNMENT=${ORALSCALE_ASSIGNMENT}"
     [ -n "${ORALSCALE_WEBAPP_URL:-}" ] && echo "ORALSCALE_WEBAPP_URL=${ORALSCALE_WEBAPP_URL}"
     echo "ORALSCALE_MAX_POINTS=${ORALSCALE_MAX_POINTS:-10}"
+    echo "ORALSCALE_GRADING_BUDGET_SEC=${ORALSCALE_GRADING_BUDGET_SEC:-2100}"
+    echo "ORALSCALE_LOCAL_TIMEOUT=${ORALSCALE_LOCAL_TIMEOUT:-1000}"
     [ -n "${GENAI_STUDIO_API_KEY:-}" ]  && echo "GENAI_STUDIO_API_KEY=${GENAI_STUDIO_API_KEY}"
     [ -n "${GENAI_STUDIO_BASE_URL:-}" ] && echo "GENAI_STUDIO_BASE_URL=${GENAI_STUDIO_BASE_URL}"
     [ -n "${GENAI_STUDIO_MODEL:-}" ]    && echo "GENAI_STUDIO_MODEL=${GENAI_STUDIO_MODEL}"
@@ -88,8 +90,8 @@ rm -f autograder.zip
 # in the zip and once again on the image build, and a >1 GB upload is slow and
 # fails silently on a poor connection. The zip is code + bank + secrets only.
 ( cd source && zip -r ../autograder.zip . \
-    -x '__pycache__/*' '*.example' 'models/*' '*.gguf' '*.bin' '*.safetensors' '*.pt' >/dev/null )
-zip autograder.zip setup.sh run_autograder >/dev/null
+    -x '__pycache__/*' '*.example' 'models/*' 'runtime/*' '.venv/*' '*.gguf' '*.bin' '*.safetensors' '*.pt' >/dev/null )
+zip autograder.zip setup.sh setup-legacy.sh run_autograder >/dev/null
 chmod 600 autograder.zip
 
 # A zip this size means weights got in anyway. Refuse it rather than let an

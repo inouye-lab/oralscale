@@ -34,18 +34,52 @@
     "requireAccessKey": true,
     "requireAccessKeyNote": "INV-SEC-8. Leave this TRUE on any real course. The quiz link is public, so without a key anyone can invent an identity and mine the week's bank.",
     "scoreAggregation": "dropLowest",
+    "scoreAggregationNote": "RECOMMENDED 'dropLowest': with five questions the weakest answer is shown with its feedback but does not count, so one bad draw or one transcription slip never decides the mark (INV-GRADE-11).",
     "gradingBackend": "local",
     "gradingBackendNote": "LEAVE THIS AS 'local' UNLESS YOU HAVE DECIDED OTHERWISE, DELIBERATELY. 'local' runs a small open-weights model INSIDE the Gradescope container, so the transcript NEVER LEAVES IT. 'genai' sends the de-identified, PII-redacted transcript to a remote grading service, which grades better, but that service may hold no FERPA certification and the transcript leaves your institution's boundary. That is the instructor's risk to take, not this software's to take on your behalf. THERE ARE NO FALLBACKS (INV-GRADE-1): the grader you name here is the one used, and if it cannot run, affected submissions are NOT graded and are flagged for you to regrade the whole cohort together. Grading a student with a different backend would measure them by a method nobody else was measured by. If you do switch, update the student-facing privacy disclosure to match. See docs/reference/GRADER-BACKENDS.md and PRIVACY.md.",
-    "gradingQualityNote": "GRADING QUALITY. The local grader is qwen2.5-3b and there is no model choice: eleven alternatives from 1.5B to 9B were measured against it (Qwen2.5/3/3.5, Gemma 3/4, Phi-4-mini, Llama 3.2, Ministral) and none won — bigger models grade WORSE here because they are generous, which shows up as ties. It needs 2.07 GB peak in the container, 66% headroom, and its memory does NOT grow with questionsPerAttempt. IF YOU WANT BETTER GRADING, the choice is the BACKEND, not the model: Purdue GenAI (qwen3.6:27b) marks NOTICEABLY BETTER than the local model on every metric measured. The cost is locality — the de-identified, PII-redacted transcript leaves the Gradescope container to a service with no FERPA certification, which is why 'local' is the default. Set gradingBackend='genai' to accept that trade. See docs/reference/GRADER-BACKENDS.md.",
+    "gradingQualityNote": "Default local profile qwen35-context-off-v1: Qwen3.5 4B Q4_K_M, thinking disabled, one question at a time. Evidence is points-mode synthetic testing; qualify each new bank. See docs/reference/LOCAL-GRADING.md. Explicit qwen2.5-3b retains the historical grader.",
+    "scoring": {
+      "mode": "points",
+      "requiredWeight": 2,
+      "optionalWeight": 1,
+      "novelWeight": 1,
+      "novelCap": 3,
+      "partlyFactor": 0.5,
+      "curveRounding": "up",
+      "table": [
+        0,
+        0.7,
+        0.85,
+        0.9,
+        0.92,
+        0.95,
+        0.97,
+        1.0
+      ],
+      "falseClaimCapScore": 0.85,
+      "noCoreCapScore": 0.7
+    },
+    "scoringNote": "RECOMMENDED: the points curve (INV-GRADE-10), the style the pilot course has used since its third quiz. The grader judges every point on its own (stated / partly / absent / contradicted, quoting the student) and the code does the arithmetic: a required (core) point is worth 2, an optional (supporting) point 1, a correct point the key did not list ('novel') 1 up to novelCap, and 'partly' half. The total is read off `table` (index = points): one core point alone is 0.85, both core points 0.92, extra depth climbs to 1.00. `curveRounding: \"up\"` gives a total between two rungs the higher one, so a half-made point never rounds away (INV-GRADE-11). An uncorrected false claim caps the answer at falseClaimCapScore; an answer with no core point caps at noCoreCapScore. Write banks for it: each `keyPoints` entry, said correctly, should already be a sound if simplified answer, and depth goes in `bonusPoints` (see question-design.md). Delete this block for the older band ladder. Never switch a released assignment (INV-DEPLOY-6).",
+    "feedbackFooter": "A good and correct answer will generally earn about 90%. To get more points, you have to go beyond what the question explicitly asks.",
+    "feedbackFooterNote": "Plain text appended to every question's feedback (INV-USE-7). It never changes a mark. Under the curve a complete answer to the question as asked earns about 0.92, so say so: students otherwise read 92% as 'something was wrong'. Set null to show nothing.",
     "maxPoints": 10,
     "scoreBonus": 0,
     "supportChannel": "Piazza",
-    "supportChannelNote": "Where a student should ask for help if something fails on OUR side — named in the message they see when a submission could not be graded. Use whatever your course actually reads."
+    "supportChannelNote": "Where a student should ask for help if something fails on OUR side — named in the message they see when a submission could not be graded. Use whatever your course actually reads.",
+    "localModel": "qwen3.5-4b",
+    "difficultyMix": [
+      "intro",
+      "core",
+      "core",
+      "core",
+      "stretch"
+    ],
+    "difficultyMixNote": "One warm-up, three core questions and one stretch per attempt; must match questionsPerAttempt. A difficulty absent from the bank falls back to the whole bank."
   },
   "assignments": {
     "week-01-<topic>": {
       "shortTitle": "Oral Quiz 1",
-      "shortTitleNote": "REQUIRED on every assignment (INV-USE-1). The short, TOPIC-FREE label the app shows above the quiz and the only assignment text stamped into a student's link. It is display only \u2014 nothing routes, grades or selects questions on it. Keep it to the quiz number: the assignment's `title` and its id both name the week's subject, and printing either one puts a hint above the quiz and inside the link. It also has to stay true if the quiz is re-scoped or becomes a review. Matching the Gradescope assignment name is useful but not required. gen-url.js and check-course-safety.js both refuse without it.",
+      "shortTitleNote": "REQUIRED on every assignment (INV-USE-1). The short, TOPIC-FREE label the app shows above the quiz and the only assignment text stamped into a student's link. It is display only — nothing routes, grades or selects questions on it. Keep it to the quiz number: the assignment's `title` and its id both name the week's subject, and printing either one puts a hint above the quiz and inside the link. It also has to stay true if the quiz is re-scoped or becomes a review. Matching the Gradescope assignment name is useful but not required. gen-url.js and check-course-safety.js both refuse without it.",
       "week": "01",
       "bank": "banks/week-01-<topic>.json",
       "bankNote": "Resolved RELATIVE TO THIS FILE, not to the OralScale repo root (INV-COURSE-1), so this folder works wherever it is cloned."

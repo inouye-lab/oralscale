@@ -31,12 +31,61 @@ const esc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;');
 
-// The prompt's tiny markdown subset, rendered the way the student app renders it
-// so the reviewer reads what the student will actually see.
-const inline = (s) => esc(s)
-  .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-  .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
-  .replace(/`([^`]+)`/g, '<code>$1</code>');
+/* The prompt is rendered THROUGH THE STUDENT APP'S OWN PARSER, not a lookalike.
+ *
+ * WHY: this sheet exists so the instructor reads the bank as the students will
+ * meet it (courses/AGENTS.md rule 1), and from quiz-02 on the banks carry real
+ * notation in prompts. A hand-rolled bold/italic pass printed `$A=U\Sigma V^T$`
+ * as raw dollar-sign source, so the one audience who most needs to see the
+ * equation was the only audience that never did. Worse, the two renderers could
+ * drift: the sheet could show something the app does not.
+ *
+ * So `parseRich` is imported from web/js/richtext.mjs and its spec tree is
+ * serialised to an HTML string here. The tree is the same one the app turns into
+ * DOM nodes, so an unsupported macro shows up on this page exactly as literally
+ * as it will on a phone — which is the point. Browsers render MathML natively,
+ * so this needs no library and no network fetch, and the sheet stays one
+ * self-contained file.
+ *
+ * SAFETY (INV-SEC-6): tag names come only from the parser's whitelists, every
+ * attribute is a fixed string decided here rather than taken from the source,
+ * and all text goes through esc(). Bank text is instructor- and LLM-authored, so
+ * this must not become an injection path. Mirrors buildNode() in richtext.mjs.
+ */
+const { parseRich, HTML_TAGS, MATHML_TAGS } = require('../web/js/richtext.mjs');
+
+const specToHtml = (spec) => {
+  if (!spec) return '';
+  if (spec.t === 'text') return esc(spec.text || '');
+  const tag = spec.t;
+  if (!HTML_TAGS.includes(tag) && !MATHML_TAGS.includes(tag)) return '';
+  let attrs = '';
+  if (tag === 'math') {
+    attrs += ' xmlns="http://www.w3.org/1998/Math/MathML"';
+    if (spec.display) attrs += ' display="block"';
+  }
+  if (tag === 'mover' && spec.accent) attrs += ' accent="true"';
+  if (tag === 'mspace' && spec.width) {
+    attrs += ` width="${/^[0-9.]+em$/.test(spec.width) ? spec.width : '0.25em'}"`;
+  }
+  if (spec.cls === 'math-raw') attrs += ' class="math-raw"';
+  if (tag === 'br') return '<br>';
+  const inner = spec.text != null
+    ? esc(spec.text)
+    : (spec.children || []).map(specToHtml).join('');
+  return `<${tag}${attrs}>${inner}</${tag}>`;
+};
+
+/* Prompts are one flowing line in this sheet, so a single paragraph is unwrapped
+ * rather than boxed; anything richer (a list, several paragraphs) keeps its
+ * blocks. */
+const inline = (s) => {
+  const blocks = parseRich(s);
+  if (blocks.length === 1 && blocks[0].t === 'p') {
+    return (blocks[0].children || []).map(specToHtml).join('');
+  }
+  return blocks.map(specToHtml).join('');
+};
 
 const qs = bank.questions || [];
 const DIFFS = ['intro', 'core', 'stretch'];
@@ -121,6 +170,11 @@ const html = `<title>${esc(bank.title)}</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
+  /* Rendered MathML, so the reviewer sees the equation the student sees. */
+  math { font-size: 1.05em; }
+  math[display="block"] { display: block; margin: .5em 0; overflow-x: auto; }
+  code.math-raw { background: #fde8e8; color: #8a1f1f; padding: 0 .25em; border-radius: 3px; }
+
 :root{
   --paper:#e9edf1; --surface:#fff; --surface-2:#f3f6f8;
   --ink:#12181f; --ink-2:#4d5a68; --ink-3:#7d8b99;

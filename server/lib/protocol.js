@@ -678,7 +678,48 @@ function sha256Hex(buf) {
   return crypto.createHash('sha256').update(buf).digest('hex');
 }
 
+/* ---------------------------------------------------------------------------
+ * WHICH BANK IS ACTUALLY DEPLOYED (INV-DEPLOY-7)
+ *
+ * The course config and its banks are bundled into the Worker at deploy time, so
+ * `/health` is the only statement of what students are really being served —
+ * that is INV-DEPLOY-5's whole argument. But /health could only say WHICH
+ * assignments existed, never WHICH QUESTIONS. That gap has teeth: a bank can be
+ * revised while its `bankId` and its question ids stay put (q3-001…q3-100), the
+ * Worker serves one revision, the Gradescope zip grades against another, and
+ * nothing errors — the grader looks a submission's questions up BY ID and
+ * happily marks an answer against a different question's rubric. Observed
+ * across three same-day revisions of a live quiz, 2026-09-16.
+ *
+ * So the bundle carries a digest of the bank FILE (answers and all), and
+ * /health publishes a KEYED TAG of it rather than the digest itself.
+ *
+ * WHY KEYED, NOT THE PLAIN DIGEST. /health is public and unauthenticated. A
+ * plain digest would let anyone holding a copy of a bank confirm it is the
+ * genuine article — turning a leak they could not be sure of into one they
+ * could. The tag is HMAC(Secret, …), so it means everything to the instructor's
+ * tooling, which has the Secret, and nothing to anybody else. Same reasoning as
+ * the D1 schema's keyed tags (INV-PRIV-5): a hash of a guessable or obtainable
+ * thing is not a one-way function in practice.
+ *
+ * The human-readable `revision` travels beside it in the clear, because "1.2" is
+ * not a secret and is what an instructor actually reads.
+ * ------------------------------------------------------------------------- */
+
+/** sha256 of a bank file's bytes, as hex. Matches what validate-bank.js prints. */
+function bankDigest(raw) {
+  return crypto.createHash('sha256').update(Buffer.isBuffer(raw) ? raw : Buffer.from(String(raw), 'utf8')).digest('hex');
+}
+
+/** Keyed, truncated tag for a bank digest — safe to publish on /health. */
+function bankTag(secret, courseId, assignmentId, digest) {
+  return hmac(secret, Buffer.from(`bank:v1:${courseId}:${assignmentId}:${digest}`, 'utf8'))
+    .toString('hex').slice(0, 16);
+}
+
 module.exports = {
+  bankDigest,
+  bankTag,
   b64urlEncode,
   b64urlDecodeToBuf,
   signToken,

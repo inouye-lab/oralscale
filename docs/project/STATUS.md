@@ -1,6 +1,39 @@
 # STATUS — OralScale (handoff)
 
-_Machine + human handoff. Update at the end of each work session._
+## Release 0.2.0-alpha.1 (2026-10-19)
+
+Second public snapshot of the engine. The detailed handoff log between 2026-09-12 and this
+release records pilot-course operations (bank drafts, specific autograder zips and their hashes,
+upload history) and stays in the private development repository; what changed in the engine is
+summarised here and in [CHANGELOG.md](../../CHANGELOG.md).
+
+- **Recommended course setup.** `courses/_template/course.json`, `tools/setup.js` and the demo
+  course ship local grading (Qwen3.5 4B, profile `qwen35-context-off-v1`), the points curve with
+  upward rounding, `dropLowest`, an intro/core×3/stretch mix and a ~90% `feedbackFooter`. The engine
+  default for an unset `scoring` stays `bands`, so no existing course changes scale silently
+  (INV-DEPLOY-6). `courses/_template/question-design.md` carries the house style the pilot course
+  converged on; the demo bank (revision 2.0) is a worked example of the schema it asks for.
+- **Scoring.** Points curve with novel-point credit and two ceilings (INV-GRADE-10);
+  `curveRounding`; positive mistakes beat negative mistakes as a project rule (INV-GRADE-11);
+  optional per-question `feedbackFooter` (INV-USE-7).
+- **Local grading.** Versioned local profile with a pinned llama.cpp runtime, SHA256-verified
+  model artifacts and constrained JSON (INV-LOCAL-1/2); evidence and limits in
+  `docs/reference/LOCAL-GRADING.md`. Developer workstations resolve weights offline from the shared
+  Hugging Face cache.
+- **Stability.** pip pinned before grader dependencies (Gradescope image builds broke on
+  Ubuntu 22.04's pip resolver); every verified attempt is graded, with missed boundary codes
+  flagged for review rather than silently zeroing the attempt (INV-CODE-4); timing and memory
+  diagnostics in every autograder (INV-USE-6).
+- **Deployment safety.** `/health` reports which bank revision is deployed and `gen-url.js`
+  refuses to mint against a different one (INV-DEPLOY-7); each zip's environment matches its own
+  assignment's backend, so the GenAI key ships only where it is used; a GenAI zip is never built
+  against a retired model (INV-DEPLOY-8); identity-debug builds for instructors (INV-DEBUG-1).
+- **Authoring.** QUESTION-DESIGN-GUIDE Step 7 (what a prompt and its key owe each other),
+  `tools/bank-worksheet.js`, and a quiz-bank authoring skill for coding agents.
+- **Public guides 1.5.** Codes and bank FAQs updated; screenshots and PDFs regenerated and reviewed.
+
+Gate at release: unit 593/593, Worker 16/16, E2E 70/70, local suites, package 28/28, course smoke,
+`test:guides:release`, course-safety and secrets checks pass.
 
 ## Public-release scrub (2026-09-12)
 
@@ -22,6 +55,29 @@ of real-course specifics:
   holding a private course folder.
 - `tools/deploy.sh` requires a course argument (no private default); `test-course-smoke.js`
   defaults to `demo`/`demo-quiz`.
+
+## The curve replaces the bands from Quiz 3 (2026-09-15, INV-GRADE-9/10)
+
+The instructor reassessed the scale (see DESIGN-QUESTIONS, "The curve, and credit for points nobody
+listed"). Two changes, both in `autograder/source/pointscore.py`:
+
+- **`scoring.table` is a curve, and it is the scale.** Points (core 2, supporting 1, half for
+  `partly`) are read off `0 / 0.70 / 0.85 / 0.90 / 0.92 / 0.95 / 0.97 / 1.00`, lower entry on a
+  half point. One core point alone is 0.85; both are 0.92. Two ceilings replace the band cap:
+  `falseClaimCapScore` 0.85 and `noCoreCapScore` 0.70. No band name is produced, so no ladder is
+  needed; band mode is untouched and Quiz 0–2 remain pinned to it.
+- **Novel points.** The grader now also reports substantive correct points the student made that
+  are on neither list (`novelPoints`, `full`/`partial`/`wrong`, quote required), worth 1 each up to
+  `novelCap` 3. A student can reach full marks by explaining the idea their own way. A `wrong` one
+  is a false claim. Student feedback no longer names anything the student did not say.
+
+**Updated 2026-09-16.** Two course knobs, after one reversal. `partlyFactor` went to 1 and came
+back to **0.5** the same day (a whole-point `partly` made a gestured answer worth what a crisp one
+is). What shipped instead is `curveRounding: "up"`: a total between two rungs takes the higher one,
+so 3.5 → 0.92 and a lone half-made point never rounds away to nothing, while two partly-made core
+points still buy only what one whole point buys. The pilot's Quiz 2 regrade zip was frozen before
+both changes: it prices `partly` at half and rounds **down**. A
+regrade in flight is not re-cut to pick up a later change.
 
 ## Points scoring, built and off by default (2026-09-12, INV-GRADE-10)
 
@@ -322,7 +378,7 @@ uploaded zip is what grades it, and the file in `autograders/` was verified unto
 ### The Quiz 2 bank
 
 100 questions on the three frozen week-two lectures, 25 intro / 50 core / 25 stretch, all 289 evidence quotes verified verbatim
-against the ai-curriculum sources.
+against the course's lecture sources.
 
 - **2.1 required key points per question**, against 5.7 in Quiz 1. Every item carries
   `bonusPoints`.

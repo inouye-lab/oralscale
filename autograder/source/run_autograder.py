@@ -31,6 +31,7 @@ import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import runtiming           # noqa: E402
 import protocol            # noqa: E402
 import transcribe as stt   # noqa: E402
 import grade as grader     # noqa: E402
@@ -408,6 +409,9 @@ def segment_transcript(words, text, seg):
 
 
 def main():
+    timing = runtiming.current
+    timing.start_console()
+    timing.start_resources()
     secret = env("ORALSCALE_SECRET")
     sub_dir = env("ORALSCALE_SUBMISSION", "/autograder/submission")
     results_path = env("ORALSCALE_RESULTS", "/autograder/results/results.json")
@@ -416,13 +420,14 @@ def main():
     dur_tol = int(env("ORALSCALE_DURATION_TOL", "20"))
 
     tests = []
+    debug_identity = False
     flags = []          # instructor-facing reasons this submission needs a look
 
     # Students see exactly this on ANY validation failure — never which check, and
     # never why. Naming the failing check tells someone probing the system precisely
     # what to adjust; it also spares an honest student a confusing accusation.
     VALIDATION_FAILED_MSG = (
-        "We could not validate this recording, so it could not be graded.\n\n"
+        "We could not validate this recording, so it scores 0.\n\n"
         "This is usually something small. Please record a fresh attempt, following the steps "
         "exactly: open the quiz link from this assignment, enter the same email you use for "
         "Gradescope, read the digits aloud when they appear, and upload the .zip the page gives "
@@ -432,7 +437,7 @@ def main():
         "History and re-activate the attempt you want counted; it is two clicks and the choice "
         "is yours.\n\n"
         "If it happens again, contact a TA and we will look into it — it may well be our bug.")
-    STUDENT_FAILED_TOP = ("This attempt could not be validated and was not graded. "
+    STUDENT_FAILED_TOP = ("This attempt could not be validated, so it scores 0. "
                           "Please try a fresh attempt; if it keeps happening, contact a TA.")
 
     # THE ONE VALIDATION FAILURE A STUDENT IS TOLD THE CAUSE OF (INV-USE-1).
@@ -503,6 +508,7 @@ def main():
     # one thing they are asked to DO, so naming this check is coaching, not a hint.
     CODES_HELP = (
         "We could not hear {which} in your recording.\n\n"
+        "{outcome}"
         "{ledger}"
         "How it should go:\n"
         "  1. Four digits appear FIRST. Read them out loud, one at a time — \"four, seven, one, "
@@ -523,6 +529,42 @@ def main():
         "RECENT upload rather than your best one — if a retake comes out worse, re-activate the "
         "attempt you want from Submission History. If you are doing all of the above and it still "
         "fails, contact a TA — that would be our problem, not yours.")
+
+    # HALF THE CODES HEARD IS GRADED; FEWER, OR ANY OTHER FAILURE, SCORES 0 BUT IS
+    # STILL GRADED FOR THE INSTRUCTOR (INV-CODE-4).
+    #
+    # Even with the rescue pass (INV-INTEGRITY-9), transcription still drops a
+    # code the student plainly said — observed on Quiz 4, where the opening digits
+    # simply never came out of Whisper. Failing the whole attempt for that is a
+    # negative mistake (INV-GRADE-11), so when at least HALF the codes were heard
+    # the answers are graded as usual and the attempt goes to the instructor.
+    # Below that, or when any other check fails, the attempt scores 0 — but it is
+    # still graded, out of the student's sight, so that overriding a benign case
+    # is one edit in Gradescope rather than a re-mark from the audio.
+    CODES_PARTIAL_OUTCOME = (
+        "YOUR ANSWERS WERE STILL GRADED, and the score above is the one they earned. Because not "
+        "every code was heard, this attempt has been flagged for your instructor to review, and "
+        "that review MAY AFFECT YOUR FINAL GRADE. If you can, record a fresh attempt and read "
+        "every code clearly — a clean attempt needs no review.\n\n")
+    CODES_LOW_OUTCOME = (
+        "Because fewer than half of the codes were heard, this attempt scores 0 automatically. "
+        "Your instructor can still review it, so if this was our mistake it can be corrected — "
+        "but please record a fresh attempt rather than counting on that.\n\n")
+    CODES_PARTIAL_VALIDATION_MSG = (
+        "Not every spoken code was heard (see \u201cSpoken codes\u201d). Every other check "
+        "passed, so your answers were graded and the score stands for now \u2014 but this attempt "
+        "is flagged for instructor review, which MAY AFFECT YOUR FINAL GRADE.\n\n"
+        "We encourage you to record a fresh attempt. Gradescope grades your MOST RECENT upload, "
+        "so if the new one scores lower, re-activate whichever attempt you want counted from "
+        "Submission History.")
+    CODES_LOW_VALIDATION_MSG = (
+        "Fewer than half of the spoken codes were heard (see \u201cSpoken codes\u201d), so this "
+        "attempt could not be confirmed as a live recording and scores 0.\n\n"
+        "Your instructor can review it, so a transcription mistake on our side can be put right. "
+        "Please record a fresh attempt \u2014 that is the quickest way to a score.")
+    # What the instructor's REVIEW block says about the submission. None means the
+    # default: it failed validation and scored 0.
+    review_lead = [None]
 
     def wrap(text, width=88):
         """Gradescope renders output verbatim, so wrap it or it is one long line."""
@@ -617,25 +659,41 @@ def main():
 
     def finish(total, top, student_top=None):
         # `output` is shown to STUDENTS, so it must stay generic.
+        if debug_identity:
+            top = "DEBUG AUTOGRADER — instructor testing only.\n\n" + top
+            if student_top is not None:
+                student_top = "DEBUG AUTOGRADER — instructor testing only.\n\n" + student_top
         if flags:
             tests.insert(0, {
                 "name": "⚑ REVIEW — instructor only",
                 "status": "failed",
                 "visibility": "hidden",
                 "output": wrap(
-                    "This submission failed one or more validation checks. The student was told only "
-                    "that validation failed and to retry.\n\n"
-                    "Treat as benign until shown otherwise: a mistyped email, a stale link, a "
+                    ("DEBUG AUTOGRADER: identity mismatches are diagnostic only. All other "
+                     "validation failures still score 0. These marks are for instructor testing.\n\n"
+                     if debug_identity else
+                     review_lead[0] + "\n\n" if review_lead[0] else
+                     "This submission failed one or more validation checks and scored 0. The student "
+                     "was told only that validation failed and to retry. It was still graded: see "
+                     "\u201cWould-have-been score\u201d below to override if the failure was benign.\n\n")
+                    + "Treat as benign until shown otherwise: a mistyped email, a stale link, a "
                     "half-finished attempt or a bug on our side all look like this. The point of "
                     "recording it is to spot a PATTERN across submissions.\n\n"
                     "What failed:\n" + "\n".join("  - " + f for f in flags)),
             })
+        summary, breakdown = timing.finish()
+        tests[:] = runtiming.feedback_first(tests)
+        add("Grading time", True, summary, visible=True)
+        add("Timing breakdown (instructor only)", True, breakdown)
         os.makedirs(os.path.dirname(results_path) or ".", exist_ok=True)
+        timing.emit("RESULTS_WRITE_STARTED")
         with open(results_path, "w", encoding="utf-8") as f:
             json.dump({"score": round(total, 3),
                        "output": wrap(student_top if student_top is not None else top),
-                       "tests": tests, "visibility": "visible"}, f, indent=2)
-        print(top)          # full detail to the autograder log (instructor-only)
+                       "tests": tests, "visibility": "visible",
+                       "stdout_visibility": "hidden"}, f, indent=2)
+        timing.emit("RESULTS_WRITE_COMPLETED bytes=" + str(os.path.getsize(results_path)))
+        print(top, flush=True)          # full detail to the autograder log (instructor-only)
 
     if not secret:
         add("Configuration", False, "ORALSCALE_SECRET must be set (autograder/source/secret.env).")
@@ -647,6 +705,18 @@ def main():
     course = load_course()
     assignment_id, how = resolve_assignment(
         course, env("ORALSCALE_METADATA", "/autograder/submission_metadata.json"))
+
+    debug_spec = course.get("debugAutograder") or {}
+    debug_identity = (isinstance(debug_spec, dict)
+                      and debug_spec.get("identityCheck") == "flag-only"
+                      and debug_spec.get("assignmentId") == assignment_id)
+    if debug_identity:
+        add("⚠ DEBUG AUTOGRADER — instructor testing only", False, visible=True,
+            out="DEBUG: identity is checked and any mismatch is flagged, but identity does not "
+                "block grading in this package. All other integrity checks remain enforced. "
+                "Do not use these marks as official student grades. Upload the normal package "
+                "before deploying or regrading the class.")
+        flag("DEBUG AUTOGRADER: identity comparison is diagnostic only; instructor testing.")
 
     # Pointers for the accommodation-review notification. These are the ONLY
     # things that email may carry: what to open, never who or what about
@@ -842,6 +912,16 @@ def main():
             "Had this been checked, the result would have been: "
             + ("MATCH." if (ref and protocol.student_ref_matches(
                 secret, salt, cert.get("studentRef", ""), ref, course_id, epoch)) else "MISMATCH."))
+    elif debug_identity:
+        identity_matches = bool(ref and protocol.student_ref_matches(
+            secret, salt, cert.get("studentRef", ""), ref, course_id, epoch))
+        add("Identity (DEBUG — " + ("MATCH" if identity_matches else "MISMATCH") + ")",
+            identity_matches, visible=True,
+            out=("Identity matches the authenticated submitter." if identity_matches else
+                 "Identity does not match the authenticated submitter, or submitter metadata "
+                 "is missing. Flagged for instructor testing; grading continues in DEBUG only."))
+        if not identity_matches:
+            flag("DEBUG identity mismatch or absent submitter metadata; content grading allowed.")
     elif ref and not protocol.student_ref_matches(secret, salt, cert.get("studentRef", ""), ref,
                                                 course_id, epoch):
         add("Identity", False,
@@ -957,7 +1037,9 @@ def main():
     integrity_ok = integrity_ok and window_ok
 
     # Transcribe (INV-PRIV-3) + duration (INV-INTEGRITY-3)
+    timing.stage("Audio transcription (including speech model load)")
     text, words, method = stt.transcribe(audio_path, os.path.dirname(cert_path))
+    timing.stage("Post-transcription validation (including spoken-code rescue)")
     D = stt.audio_duration_sec(audio_path, words)
     if D is None:
         add("Duration", True, "Could not measure audio duration (no ffprobe/timestamps) — check skipped.")
@@ -1062,6 +1144,11 @@ def main():
     bounds, positional = check_boundary_codes(secret, cert, text, words,
                                               audio_path=audio_path, duration=D)
     missing = [b for b in bounds if not b["ok"]]
+    # INV-CODE-4: at least half heard -> graded and flagged; fewer -> scores 0,
+    # graded out of sight. 5 questions = 6 codes, so 3 heard is enough.
+    n_heard = len(bounds) - len(missing)
+    codes_low = 2 * n_heard < len(bounds)
+    codes_partial = bool(missing) and not codes_low
     rescued = [b for b in bounds if b.get("via") == "rescue"]
     detail = (", ".join(f"code {b['k']} " + ("✓" if b["ok"] else "MISSING")
                         + (" (rescued)" if b.get("via") == "rescue" else "")
@@ -1126,8 +1213,13 @@ def main():
             "",
         ]
         ledger = "\n".join(ledger) + "\n"
+        # The outcome is only promised when the codes are the ONLY problem. If
+        # another check failed too, the attempt is not graded at all and the
+        # generic validation message below says so.
+        outcome = ("" if not integrity_ok else
+                   CODES_PARTIAL_OUTCOME if codes_partial else CODES_LOW_OUTCOME)
         add("Spoken codes", False, visible=True,
-            out=CODES_HELP.format(which=which, ledger=ledger))
+            out=CODES_HELP.format(which=which, outcome=outcome, ledger=ledger))
         add("Spoken codes", False,
             detail + ".\n\nExpected but not heard: "
             # The index and the code are BOTH digit runs, so they need a separator that
@@ -1154,9 +1246,25 @@ def main():
             + "\n\nBenign causes are common: the student talked over the digits, stopped early, "
             "or the room was noisy. A MISSING FINAL code with everything else intact is usually "
             "just a fumbled last step. Several missing is more unusual.")
-        flag("spoken codes not heard: "
+        flag("spoken codes not heard (%d of %d): " % (len(missing), len(bounds))
              + "; ".join(f"boundary {b['k']} {protocol.speak_code(b['code'])}" for b in missing))
-    integrity_ok = integrity_ok and not missing
+        if integrity_ok:
+            review_lead[0] = (
+                "GRADED DESPITE MISSING CODES (INV-CODE-4). Every other validation check passed. "
+                "%d of %d spoken codes were heard (at least half), so the answers were graded and the score "
+                "stands; the student was told it is under review and may change, and was "
+                "encouraged to retake. Listen at the missing boundaries before acting: a "
+                "transcription miss on a code the student plainly said is the common case."
+                % (len(bounds) - len(missing), len(bounds))
+                if codes_partial else
+                "FEWER THAN HALF THE SPOKEN CODES WERE HEARD (%d of %d; INV-CODE-4). Every other "
+                "validation check passed. The submission scores 0, but it WAS graded: see "
+                "“Would-have-been score” below. If the recording is genuine, override the "
+                "score in Gradescope with that figure. The student was told it scored 0 and to "
+                "retake." % (n_heard, len(bounds)))
+    # INV-CODE-4: nothing below blocks grading any more. A failure only decides
+    # whether the grade is SHOWN and COUNTED, or kept for the instructor at 0.
+    shadow = (not integrity_ok) or codes_low
 
     # Every question the certificate names must be in the bundled bank.
     questions = []
@@ -1180,18 +1288,29 @@ def main():
         # generic advice is actively wrong and there is nothing to give away.
         #
         # The INSTRUCTOR still gets everything, including the per-question split of
-        # what was said (INV-GRADE-8) — a failed attempt is exactly when someone has
-        # to read the transcript and decide by hand.
+        # what was said (INV-GRADE-8) and, below, the grade it would have earned
+        # (INV-CODE-4) — a failed attempt is exactly when someone has to decide by hand.
         instructor_answer_dump(segs, questions, words, text, cert)
         add("Validation checks", False, visible=True,
             out=student_reason[0] or VALIDATION_FAILED_MSG)
-        return finish(0, "INTEGRITY FAILED (" + "; ".join(flags) + ")",
-                      student_top=(STUDENT_FAILED_TOP if student_reason[0] is None else
-                                   "This recording is for a DIFFERENT QUIZ. See below \u2014 you "
-                                   "need the link from this assignment."))
-
-    add("Validation checks", True, visible=True,
-        out="Your recording passed all checks.")
+        shadow_log = "INTEGRITY FAILED (" + "; ".join(flags) + ")"
+        shadow_top = (STUDENT_FAILED_TOP if student_reason[0] is None else
+                      "This recording is for a DIFFERENT QUIZ. See below \u2014 you "
+                      "need the link from this assignment.")
+    elif codes_low:
+        add("Validation checks", False, visible=True, out=CODES_LOW_VALIDATION_MSG)
+        shadow_log = f"Integrity: FEWER THAN HALF THE CODES HEARD ({n_heard}/{len(bounds)}); scored 0."
+        shadow_top = (f"Score: 0. Fewer than half of the spoken codes were heard, so this attempt "
+                      f"could not be confirmed as a live recording. Please record a fresh attempt "
+                      f"\u2014 see \u201cSpoken codes\u201d below for what to do differently.")
+    elif codes_partial:
+        add("Validation checks", False, visible=True, out=CODES_PARTIAL_VALIDATION_MSG)
+    else:
+        add("Validation checks", True, visible=True,
+            out="Your recording passed all checks.")
+    # Everything added from here on is the grading itself. In a shadow grade it is
+    # moved out of the student's view and out of the score (INV-CODE-4).
+    graded_from = len(tests)
 
     # ---- extended-time accommodation (INV-PRIV-6, INV-ACCOM-1) ---------------
     # THE AUTOGRADER DOES NOT VERIFY THIS, ON PURPOSE.
@@ -1244,6 +1363,7 @@ def main():
     # a 200-student roster is 200 containers calling Purdue GenAI at once, and the
     # request count is the axis a rate limit counts. grade.py owns the batching,
     # the pre-call jitter, and the backoff-until-deadline retry.
+    timing.stage("Grading preparation and speech model release")
     seg_texts = [segment_transcript(words, text, sg) for sg in segs]
 
     # Which grader, and calibrated how. Default LOCAL: the transcript then never
@@ -1255,17 +1375,13 @@ def main():
     # force a backend for one regrade without editing (and re-shipping) the course.
     grading_backend = str(env("ORALSCALE_GRADING_BACKEND")
                           or knob(course, acfg, "gradingBackend", "local")).lower()
-    # `localModel` is NOT a config knob any more — there is one bundled local
-    # model, so there is nothing to select. This reads the removed key directly
-    # (deliberately not through knob(), which is the registry of LIVE settings)
-    # purely so a course.json written before the menu was removed gets an
-    # explicit note in the log instead of having its setting silently ignored.
-    try:
+    # Explicit profile pins survive default changes. Invalid pins fail visibly.
+    timing.emit('BACKEND_SELECTED ' + (grading_backend if grading_backend in ('local', 'genai', 'heuristic') else 'unknown'))
+    if grading_backend == 'local':
         import localmodel as _lm
-        _stale = (acfg or {}).get("localModel") or (course.get("defaults") or {}).get("localModel")
-        _lm.configure(str(_stale or "") or None)
-    except Exception:
-        pass
+        _selected = (acfg or {}).get('localModel') or (course.get('defaults') or {}).get('localModel')
+        _lm.configure(_selected)
+        timing.emit("MODEL_SELECTED " + _lm.local_model_name())
     cal = calib.load(os.path.dirname(os.path.abspath(
         env("ORALSCALE_COURSE", os.path.join(HERE, "course.json")))))
 
@@ -1325,12 +1441,14 @@ def main():
     # cannot say anything.
     budget = _f_env("ORALSCALE_GRADING_BUDGET_SEC", 1800) - (time.time() - _T0)
     grader.set_budget(max(60.0, budget))
+    timing.stage("Answer grading (model readiness, all questions and retries)")
     try:
         graded = grader.grade_all([{"question": q, "transcript": t}
                                    for q, t in zip(questions, seg_texts)],
                                   backend=grading_backend, calibration=cal,
                                   bands=band_scores, bandSpec=band_spec, scoring=scoring)
     except grader.GraderUnavailable as e:
+        timing.stage("Failure feedback and result preparation")
         support = str(knob(course, acfg, "supportChannel", "Piazza")).strip() or "Piazza"
         add("Grading backend (instructor only)", False,
             f"REGRADE REQUIRED — the '{e.backend}' grader could not grade this submission.\n\n"
@@ -1359,13 +1477,20 @@ def main():
                "ORALSCALE_GRADING_BUDGET_SEC together with the Gradescope autograder timeout, "
                "keeping the budget comfortably under it."
                if "RATE LIMITED" in str(e.reason) else ""))
+        if shadow:
+            # It was scoring 0 anyway; the student message is the validation one, not
+            # an outage they need not act on. The instructor sees both problems.
+            return finish(0, shadow_log + f" Shadow grade NOT produced — grader "
+                          f"'{e.backend}' unavailable: {e.reason}", student_top=shadow_top)
         return finish(
             0,
             f"NOT GRADED — grader '{e.backend}' unavailable: {e.reason}",
             student_top=(
-                "Your recording was received and passed every check — this is not a problem with "
-                "your submission, and nothing you did caused it.\n\n"
-                "The grading service could not be reached, so your answer has not been scored "
+                ("Your recording was received. Not every spoken code was heard (see below), but "
+                 "that is not why it has no score.\n\n" if missing else
+                 "Your recording was received and passed every check — this is not a problem with "
+                 "your submission, and nothing you did caused it.\n\n")
+                + "The grading service could not be reached, so your answer has not been scored "
                 "yet. Your instructor has to fix that and regrade; you do not need to resubmit, "
                 "and you will not be marked down for this.\n\n"
                 f"If you do not see a score after a reasonable time, post on {support} so your "
@@ -1374,6 +1499,7 @@ def main():
     # It is carried through so the feedback can show the student the words they
     # were graded on, next to the question and the mark — a score with no visible
     # evidence behind it is not something a student can learn from or dispute.
+    timing.stage("Scoring, feedback and result preparation")
     per_q = [{"seg": sg, "q": q, "g": g, "words": len(t.split()), "text": t}
              for sg, q, g, t in zip(segs, questions, graded, seg_texts)]
 
@@ -1584,7 +1710,18 @@ def main():
     # leaves the two things a student most wants — what did I actually say, and
     # what did that earn — either absent or buried. A mark a student cannot trace
     # back to their own words is not something they can learn from or dispute.
+    # A note the instructor wants under EVERY question's feedback (INV-USE-7) —
+    # typically how the scale reads, so a student at 0.92 knows that is a
+    # complete answer and not a near miss. Plain text from course.json, never
+    # model output, so it says the same thing to every student; anything that
+    # is not a non-empty string is ignored rather than printed.
+    footer = knob(course, acfg, "feedbackFooter", None)
+    footer = footer.strip() if isinstance(footer, str) else ""
+
     def question_block(p, points_line):
+        return _question_block(p, points_line) + ("\n\n" + footer if footer else "")
+
+    def _question_block(p, points_line):
         parts = [f"QUESTION\n{p['q'].get('prompt', '')}"]
         # Only if the instructor shows transcripts at all (showTranscript). And
         # only called YOUR ANSWER when it really is this question's answer: with
@@ -1719,6 +1856,43 @@ def main():
     add("Grading detail (instructor only)", True, detail)
 
     topics = ", ".join(f"{q.get('topic', '')} ({q.get('id', '')})" for q in questions)
+    heard = f"{len(bounds) - len(missing)}/{len(bounds)} codes heard"
+    if shadow:
+        # INV-CODE-4: scored 0, but the grading is kept for the instructor. Each
+        # graded item becomes instructor-only and loses its score, so nothing the
+        # student sees and nothing Gradescope adds up includes it.
+        for t in tests[graded_from:]:
+            if t.get("visibility") == "visible":
+                t["visibility"] = "hidden"
+                t["name"] = "NOT COUNTED (scored 0) \u2014 " + t["name"]
+                t.pop("score", None)
+                t.pop("max_score", None)
+        add("Would-have-been score (instructor only)", False,
+            f"{total} out of {max_points}\n\n"
+            "This is what the answers earned, with every course policy (aggregation, late "
+            "policy, adjustments) applied. It was NOT given: the submission scored 0 because "
+            + ("it failed validation (see \u2691 REVIEW at the top)" if not integrity_ok else
+               f"only {n_heard} of {len(bounds)} spoken codes were heard")
+            + ". The per-question feedback is kept above, marked NOT COUNTED.\n\n"
+            + ("CAUTION: the grading model flagged a prompt-injection attempt in this answer, so "
+               "this figure may itself have been manipulated. Read the transcript before using "
+               "it.\n\n" if inj["severity"] == "high" else "")
+            + "If the failure was benign \u2014 listen to the recording \u2014 override this "
+              "submission's score in Gradescope with the figure above.")
+        return finish(0,
+                      f"{shadow_log} {heard}. {n_q} question(s): {topics}. "
+                      f"Would have scored {total}/{max_points} [graded by: {', '.join(backends)}].",
+                      student_top=shadow_top)
+    if codes_partial:
+        return finish(total,
+                      f"Integrity: PASSED except spoken codes ({heard}); graded and flagged. "
+                      f"{n_q} question(s): {topics}. "
+                      f"Score: {total}/{max_points} [graded by: {', '.join(backends)}].",
+                      student_top=f"Score: {total}/{max_points}. Not every spoken code was heard, so "
+                                  f"this attempt is flagged for instructor review, which MAY AFFECT "
+                                  f"YOUR FINAL GRADE. We encourage you to record a fresh attempt. "
+                                  f"Gradescope grades your MOST RECENT upload, so if a retake scores "
+                                  f"lower, re-activate the attempt you want from Submission History.")
     return finish(total,
                   f"Integrity: PASSED. {n_q} question(s): {topics}. "
                   f"Score: {total}/{max_points} [graded by: {', '.join(backends)}].",
@@ -1729,4 +1903,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+        runtiming.current.emit("PYTHON_MAIN_RETURNED; interpreter cleanup follows")
+    except BaseException as exc:
+        runtiming.current.emit("PYTHON_FAILED exception_type=" + type(exc).__name__)
+        raise

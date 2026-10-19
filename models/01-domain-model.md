@@ -16,6 +16,10 @@ docs, and UI use these exact terms (see the House Lexicon at the bottom).
   principle, answerable aloud in 2–3 min (≤5). The `principle` field ties it to the course's
   redesign philosophy; the optional fields exist so a grader anchors to the Instructor's standard
   rather than its own, which matters most for a small, self-contained grader (`tools/eval/`).
+  Authoring review also checks **first-read clarity**: the setup identifies the objects and
+  assumptions, and the ask states what the student should explain. Conceptual difficulty belongs
+  in the reasoning, not in compressed wording. This is an editorial judgment, not a property
+  certified by a word-count or schema test; see the question-design guide.
 - **Question-design brief** — `courses/<courseId>/question-design.md`: what the Instructor is
   trying to measure, what a score should mean, and what `intro`/`core`/`stretch` mean in *this*
   course. Together with **Sources** it is the input every Bank is generated from. It is

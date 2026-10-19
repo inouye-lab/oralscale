@@ -1,0 +1,27 @@
+{
+  "runtime": {
+    "tag": "b10717",
+    "commit": "a32af33de2b5950e701578dc23a229e8e2c727b9",
+    "assets": {
+      "x64": {
+        "url": "https://github.com/ggml-org/llama.cpp/releases/download/b10717/llama-b10717-bin-ubuntu-x64.tar.gz",
+        "sha256": "41d495a0cf6aa3c3ed08d865dd414e3fd54ba10eca8644804d66350c9352aeca"
+      },
+      "arm64": {
+        "url": "https://github.com/ggml-org/llama.cpp/releases/download/b10717/llama-b10717-bin-ubuntu-arm64.tar.gz",
+        "sha256": "dcdc5d7fc1c0126eb2ec34a1517ed4cba8047b8ce550867a47271d100984a7c9"
+      }
+    },
+    "source": {
+      "url": "https://codeload.github.com/ggml-org/llama.cpp/tar.gz/a32af33de2b5950e701578dc23a229e8e2c727b9",
+      "sha256": "0bc908b79411de565f8aca8f01175cc340b4745abbc6a2117f45ba742c0cc445"
+    }
+  },
+  "model": {
+    "repo": "unsloth/Qwen3.5-4B-GGUF",
+    "revision": "e87f176479d0855a907a41277aca2f8ee7a09523",
+    "file": "Qwen3.5-4B-Q4_K_M.gguf",
+    "sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
+    "bytes": 2740937888
+  }
+}
