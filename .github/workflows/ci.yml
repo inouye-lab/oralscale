@@ -40,13 +40,26 @@ jobs:
       - name: Create ephemeral test signing config
         run: node tools/make-config.js
 
+      - name: Create ephemeral per-course signing Secrets (built-in courses)
+        run: |
+          # Every course signs with its OWN Secret and there is no fallback
+          # (INV-COURSE-4), so a clean checkout has none and nothing can be built
+          # or checked. Mint throwaway ones for the courses the engine ships.
+          # They live only in this runner, in gitignored courses/<id>/.env files;
+          # _template is a skeleton and is never keyed.
+          for c in courses/*/course.json; do
+            case "$c" in courses/_template/*) continue ;; esac
+            node tools/make-config.js --course "$c"
+          done
+
       - name: No private course content in the tree
         run: |
-          # The engine repo ships demo, _template and _shell-for-testsuite. Anything
-          # else under courses/ means the allow-list in .gitignore has failed
-          # and a question bank is about to be published.
+          # The engine repo ships the courses/ docs plus demo, _template,
+          # _testsuite and _shell-for-testsuite. Anything else under courses/
+          # means the allow-list in .gitignore has failed and a question bank is
+          # about to be published.
           unexpected=$(git ls-files courses/ \
-            | grep -vE '^courses/(README\.md|AGENTS\.md|_template/|demo/|_shell-for-testsuite/)' || true)
+            | grep -vE '^courses/(README\.md|AGENTS\.md|CLAUDE\.md|GOVERNANCE\.md|_template/|demo/|_testsuite/|_shell-for-testsuite/)' || true)
           if [ -n "$unexpected" ]; then
             echo "::error::Private course content is tracked in the engine repository:"
             echo "$unexpected"
@@ -148,6 +161,18 @@ jobs:
 
       - name: Credentials and student records (strict)
         run: node tools/check-secrets.js --all
+
+      - name: Create ephemeral per-course signing Secrets (built-in courses)
+        run: |
+          # Every course signs with its OWN Secret and there is no fallback
+          # (INV-COURSE-4), so a clean checkout has none and nothing can be built
+          # or checked. Mint throwaway ones for the courses the engine ships.
+          # They live only in this runner, in gitignored courses/<id>/.env files;
+          # _template is a skeleton and is never keyed.
+          for c in courses/*/course.json; do
+            case "$c" in courses/_template/*) continue ;; esac
+            node tools/make-config.js --course "$c"
+          done
 
       - name: No course ships with the enrolment gate off
         run: node tools/check-course-safety.js
